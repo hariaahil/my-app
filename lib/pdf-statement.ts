@@ -39,7 +39,6 @@ function normalizeSourceAccount(value: string) {
     return `${issuer} ••XX${card[2]} | ${card[3].trim()}`;
   }
 
-  // GPay Circle rows append the delegated payer text after the account number.
   const bank = raw.match(/^(.*?)\s+(\d{4})(?:\s*\|\s*Paid\s+for\s+.+)?$/i);
   if (!bank) return raw;
   const institution = aliases[bank[1].trim().toLowerCase()] || bank[1].trim();
@@ -51,29 +50,18 @@ function accountFrom(text: string, label: "Paid by" | "Paid to") {
   return match ? normalizeSourceAccount(match[1]) : undefined;
 }
 
-export async function extractPdfStatement(file: File): Promise<ParsedStatementTransaction[]> {
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  pdfjs.GlobalWorkerOptions.workerSrc = "https://unpkg.com/pdfjs-dist@5.7.284/build/pdf.worker.mjs";
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const pdf = await pdfjs.getDocument({ data: bytes }).promise;
-  const pages: string[] = [];
-  for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
-    const page = await pdf.getPage(pageNo);
-    const content = await page.getTextContent();
-    pages.push(content.items.map((item) => ("str" in item ? item.str : "")).join("\n"));
-  }
-
-  const text = pages.join("\n").replace(/\r/g, "");
-  if (!text.trim()) throw new Error("This PDF has no selectable text. It may be a scanned statement and needs OCR.");
+export function parseStatementText(text: string): ParsedStatementTransaction[] {
+  const normalized = text.replace(/\r/g, "");
+  if (!normalized.trim()) throw new Error("This PDF has no selectable text. It may be a scanned statement and needs OCR.");
 
   const datePattern = /\b\d{1,2}\s*[A-Za-z]{3},\s*\d{4}\b/g;
-  const dates = [...text.matchAll(datePattern)];
+  const dates = [...normalized.matchAll(datePattern)];
   const result: ParsedStatementTransaction[] = [];
 
   for (let i = 0; i < dates.length; i++) {
     const start = dates[i].index ?? 0;
-    const end = i + 1 < dates.length ? (dates[i + 1].index ?? text.length) : text.length;
-    const block = text.slice(start, end).replace(/\s+/g, " ").trim();
+    const end = i + 1 < dates.length ? (dates[i + 1].index ?? normalized.length) : normalized.length;
+    const block = normalized.slice(start, end).replace(/\s+/g, " ").trim();
     const dateText = dates[i][0];
 
     const selfTransfer = block.match(/Self\s+transfer\s+to\s+(.+?)\s+UPI\s*Transaction\s*ID\s*:\s*(\d{8,})/i);
@@ -91,8 +79,6 @@ export async function extractPdfStatement(file: File): Promise<ParsedStatementTr
     const description = match[1].replace(/\s+/g, " ").trim();
     if (description.length < 2) continue;
 
-    // For outgoing payments and self-transfers the source is Paid by.
-    // For incoming payments the user's receiving account is the Paid to account.
     const sourceAccount = selfTransfer || paid ? accountFrom(block, "Paid by") : accountFrom(block, "Paid to");
 
     result.push({
@@ -106,4 +92,18 @@ export async function extractPdfStatement(file: File): Promise<ParsedStatementTr
   }
 
   return [...new Map(result.map((r) => [r.provider_transaction_id || `${r.transaction_date}|${r.description.toLowerCase()}|${r.amount}|${r.transaction_type}`, r])).values()];
+}
+
+export async function extractPdfStatement(file: File): Promise<ParsedStatementTransaction[]> {
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = "https://unpkg.com/pdfjs-dist@5.7.284/build/pdf.worker.mjs";
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const pdf = await pdfjs.getDocument({ data: bytes }).promise;
+  const pages: string[] = [];
+  for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
+    const page = await pdf.getPage(pageNo);
+    const content = await page.getTextContent();
+    pages.push(content.items.map((item) => ("str" in item ? item.str : "")).join("\n"));
+  }
+  return parseStatementText(pages.join("\n"));
 }
