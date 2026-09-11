@@ -1,0 +1,46 @@
+"use client";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { LogIn, RefreshCw, Target, TrendingUp, WalletCards } from "lucide-react";
+import { createClient } from "@/lib/supabase-browser";
+import { GOAL_TARGET, AUTO_REINVEST_RATE, currentValue, projectGoal, recurringMonthly, isActive, type GoalActivity, type GoalInvestment } from "@/lib/goal-projection";
+
+type Investment=GoalInvestment;
+type Activity=GoalActivity;
+const money=(n:number)=>`₹${Math.round(Math.max(0,n)).toLocaleString("en-IN")}`;
+const dateOnly=(s:string)=>new Date(`${s}T00:00:00`);
+const dateText=(d:Date)=>d.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});
+
+export default function GoalShell(){
+ const [userId,setUserId]=useState<string|null>(null),[email,setEmail]=useState<string|null>(null),[investments,setInvestments]=useState<Investment[]>([]),[activities,setActivities]=useState<Activity[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState("");
+ const today=new Date();
+ async function load(){
+  setLoading(true);setError("");const s=createClient();const {data:{user},error:ue}=await s.auth.getUser();
+  if(ue){setError(ue.message);setLoading(false);return}setUserId(user?.id??null);setEmail(user?.email??null);if(!user){setLoading(false);return}
+  const [{data:inv,error:ie},{data:act,error:ae}]=await Promise.all([
+   s.from("goal_investments").select("*").eq("user_id",user.id).order("invested_on",{ascending:true}),
+   s.from("cash_flows").select("*").eq("user_id",user.id).eq("is_recurring",true).order("flow_date",{ascending:true})
+  ]);
+  if(ie||ae)setError(ie?.message||ae?.message||"Unable to load goal data.");
+  setInvestments((inv??[]) as Investment[]);setActivities((act??[]) as Activity[]);setLoading(false);
+ }
+ useEffect(()=>{load()},[]);
+ const current=useMemo(()=>investments.reduce((sum,i)=>sum+currentValue(i,today),0),[investments,today.toDateString()]);
+ const active=useMemo(()=>activities.filter(a=>isActive(a,today)),[activities,today.toDateString()]);
+ const income=active.filter(a=>a.flow_type==="income").reduce((s,a)=>s+recurringMonthly(a),0);
+ const expenses=active.filter(a=>a.flow_type==="expense").reduce((s,a)=>s+recurringMonthly(a),0);
+ const surplus=Math.max(0,income-expenses);
+ const points=useMemo(()=>projectGoal(investments,activities,[],today),[investments,activities,today.toDateString()]);
+ const target=points.find(p=>p.value>=GOAL_TARGET);
+ const progress=Math.min(100,current/GOAL_TARGET*100);
+ if(loading)return <main className="min-h-screen grid place-items-center bg-slate-50 text-slate-500">Loading…</main>;
+ if(!userId)return <main className="min-h-screen grid place-items-center bg-slate-50 p-4"><section className="w-full max-w-md rounded-[2rem] bg-white p-8 text-center shadow-xl ring-1 ring-slate-200"><div className="mx-auto grid size-16 place-items-center rounded-2xl bg-violet-50 text-violet-700 text-3xl font-black">₹</div><h1 className="mt-5 text-3xl font-black">₹70 lakh goal</h1><p className="mt-2 text-slate-500">Login to save your goal.</p><Link href="/login" className="mt-6 inline-flex w-full justify-center gap-2 rounded-2xl bg-violet-600 px-5 py-3.5 font-bold text-white"><LogIn size={18}/>Login / Sign up</Link></section></main>;
+ return <main className="min-h-screen bg-slate-50 px-3 py-4 text-slate-900 sm:px-6 sm:py-6"><div className="mx-auto max-w-6xl">
+  <header className="mb-4 flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200"><Link href="/" className="flex items-center gap-2 font-black"><span className="grid size-9 place-items-center rounded-xl bg-violet-600 text-white">T</span>TargetBud</Link><div className="flex items-center gap-3"><span className="hidden max-w-[260px] truncate text-xs text-slate-500 sm:block">{email}</span><button onClick={load} className="rounded-xl border border-slate-200 bg-white p-2.5"><RefreshCw size={16}/></button></div></header>
+  {error&&<div className="mb-4 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-700">{error}</div>}
+  <section className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-100 sm:p-8"><div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-slate-400">Goal control</p><h1 className="mt-1 text-3xl font-black sm:text-4xl">₹70 lakh</h1><p className="mt-2 max-w-xl text-sm text-slate-500">One projection only: your saved investments, their entered rates, saved maturity dates, recurring cash-flow surplus, and 8.1% reinvestment after maturity.</p></div><Link href="/goal/insights" aria-label="Open ₹70 lakh goal insights" className="group grid size-32 shrink-0 place-items-center rounded-full bg-slate-100 ring-8 ring-slate-50 transition hover:scale-[1.02]"><div className="grid size-24 place-items-center rounded-full border-[10px] border-violet-600 bg-white text-center"><span className="text-2xl font-black">{progress.toFixed(1)}%</span></div></Link></div><div className="mt-7 grid gap-3 sm:grid-cols-4"><div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-400">Current value</p><p className="mt-1 text-xl font-black">{money(current)}</p></div><div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-400">Remaining</p><p className="mt-1 text-xl font-black">{money(Math.max(GOAL_TARGET-current,0))}</p></div><div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-400">Monthly surplus</p><p className="mt-1 text-xl font-black">{money(surplus)}</p></div><div className="rounded-2xl bg-violet-50 p-4"><p className="text-xs text-violet-600">Reach</p><p className="mt-1 text-xl font-black text-violet-900">{current>=GOAL_TARGET?"Goal reached":target?dateText(target.date):"Not reached"}</p></div></div></section>
+  <div className="mt-4 grid gap-4 sm:grid-cols-3"><Link href="/goal/insights" className="rounded-[1.6rem] bg-white p-5 shadow-sm ring-1 ring-slate-100 transition hover:ring-violet-200"><Target className="text-violet-600"/><h2 className="mt-4 text-lg font-black">₹70L Growth Path</h2><p className="mt-1 text-sm text-slate-500">See the full month-by-month path and target date.</p></Link><Link href="/goal/insights" className="rounded-[1.6rem] bg-white p-5 shadow-sm ring-1 ring-slate-100 transition hover:ring-violet-200"><TrendingUp className="text-emerald-600"/><h2 className="mt-4 text-lg font-black">8.1% Reinvestment</h2><p className="mt-1 text-sm text-slate-500">Maturity proceeds and monthly surplus follow the same verified projection.</p></Link><Link href="/goal/insights" className="rounded-[1.6rem] bg-white p-5 shadow-sm ring-1 ring-slate-100 transition hover:ring-violet-200"><WalletCards className="text-slate-500"/><h2 className="mt-4 text-lg font-black">Wallet Control Center</h2><p className="mt-1 text-sm text-slate-500">Review investments and month-end account sweep.</p></Link></div>
+  <section className="mt-4 rounded-[1.6rem] bg-white p-5 shadow-sm ring-1 ring-slate-100"><h2 className="text-lg font-black">Saved investments</h2><div className="mt-2 divide-y divide-slate-100">{investments.map(i=><div key={i.id} className="flex items-center justify-between gap-4 py-3"><div className="min-w-0"><p className="truncate text-sm font-bold">{i.name}</p><p className="text-xs text-slate-500">{i.investment_type} · {Number(i.expected_rate||0)?`${i.expected_rate}% ${i.rate_period.toLowerCase()}`:"No return entered"}{i.maturity_on?` · ${dateOnly(i.maturity_on).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}`:""}</p></div><p className="shrink-0 text-sm font-black">{money(currentValue(i,today))}</p></div>)}{!investments.length&&<p className="py-4 text-sm text-slate-500">No investments saved yet.</p>}</div></section>
+  <p className="px-2 py-5 text-center text-[11px] leading-5 text-slate-400">Projection uses saved DB data only. No unknown maturity amount is invented. Click the percentage circle for the detailed control center.</p>
+ </div></main>;
+}
