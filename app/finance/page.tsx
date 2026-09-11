@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import { validateCredentials } from "@/lib/auth-validation";
 
-const supabase = createClient();
-
 export default function FinancePage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -16,17 +14,34 @@ export default function FinancePage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(null);
 
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getUser().then(({ data }) => { if (mounted) setUserEmail(data.user?.email ?? null); });
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => { if (mounted) setUserEmail(session?.user?.email ?? null); });
-    return () => { mounted = false; data.subscription.unsubscribe(); };
+    try {
+      const client = createClient();
+      if (!mounted) return;
+      setSupabase(client);
+      client.auth.getUser().then(({ data }) => {
+        if (mounted) setUserEmail(data.user?.email ?? null);
+      });
+      const { data } = client.auth.onAuthStateChange((_event, session) => {
+        if (mounted) setUserEmail(session?.user?.email ?? null);
+      });
+      return () => {
+        mounted = false;
+        data.subscription.unsubscribe();
+      };
+    } catch (e) {
+      if (mounted) setError(e instanceof Error ? e.message : "Supabase configuration is missing.");
+      return () => { mounted = false; };
+    }
   }, []);
 
   async function submit(event: FormEvent) {
     event.preventDefault(); setBusy(true); setError(""); setMessage("");
     try {
+      if (!supabase) throw new Error("Supabase is not configured. Add the public Supabase environment variables in Vercel.");
       const validationError = validateCredentials(email, password, mode);
       if (validationError) throw new Error(validationError);
       const result = mode === "signin"
@@ -39,7 +54,10 @@ export default function FinancePage() {
     finally { setBusy(false); }
   }
 
-  async function signOut() { await supabase.auth.signOut(); setUserEmail(null); setMessage("Signed out."); router.refresh(); }
+  async function signOut() {
+    if (!supabase) return;
+    await supabase.auth.signOut(); setUserEmail(null); setMessage("Signed out."); router.refresh();
+  }
 
   if (userEmail) return (
     <main className="min-h-screen px-5 py-12"><div className="mx-auto max-w-5xl">
