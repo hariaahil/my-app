@@ -28,7 +28,7 @@ export function currentValue(i:GoalInvestment,today:Date){
  const months=monthsBetween(start,end);
  const r=monthlyRate(i);
  if(r)value*=Math.pow(1+r,months);
- if(i.contribution_type==="Monthly"&&payment) value+=payment*months;
+ if(i.contribution_type==="Monthly"&&payment)value+=payment*months;
  if(mat&&mat<=today&&i.expected_maturity_amount!=null)value=Math.max(0,Number(i.expected_maturity_amount));
  return value;
 }
@@ -42,7 +42,10 @@ export function isActive(a:GoalActivity,today:Date){
  const start=dateOnly(a.flow_date),end=a.recurrence_end?dateOnly(a.recurrence_end):null;
  return start<=today&&(!end||end>=today);
 }
-export function projectGoal(investments:GoalInvestment[],monthlySurplus:number,settlements:GoalSettlement[],today:Date):GoalPoint[]{
+export function monthlySurplusAt(activities:GoalActivity[],d:Date){
+ return activities.filter(a=>isActive(a,d)).reduce((sum,a)=>sum+(a.flow_type==="income"?1:-1)*recurringMonthly(a),0);
+}
+export function projectGoal(investments:GoalInvestment[],activities:GoalActivity[],settlements:GoalSettlement[],today:Date):GoalPoint[]{
  const states=investments.map(i=>({i,value:currentValue(i,today),matured:!!(i.maturity_on&&dateOnly(i.maturity_on)<=today)}));
  let pool=0;
  const points:GoalPoint[]=[{date:today,value:states.reduce((s,x)=>s+x.value,0)}];
@@ -54,19 +57,17 @@ export function projectGoal(investments:GoalInvestment[],monthlySurplus:number,s
    if(s.matured)return;
    const mat=s.i.maturity_on?dateOnly(s.i.maturity_on):null;
    if(mat&&mat<=d){
-    const months=monthsBetween(today,mat);
-    const r=monthlyRate(s.i);
+    const months=monthsBetween(today,mat),r=monthlyRate(s.i);
     let maturedValue=s.value;
-    if(s.i.expected_maturity_amount!=null&&months>=0)maturedValue=Math.max(0,Number(s.i.expected_maturity_amount));
-    else { if(r)maturedValue*=Math.pow(1+r,months); if(s.i.contribution_type==="Monthly")maturedValue+=Math.max(0,Number(s.i.monthly_addition||0))*months; }
-    pool+=maturedValue;
-    s.value=0;s.matured=true;
-   } else {
-    const r=monthlyRate(s.i); if(r)s.value*=1+r;
+    if(s.i.expected_maturity_amount!=null)maturedValue=Math.max(0,Number(s.i.expected_maturity_amount));
+    else {if(r)maturedValue*=Math.pow(1+r,months);if(s.i.contribution_type==="Monthly")maturedValue+=Math.max(0,Number(s.i.monthly_addition||0))*months;}
+    pool+=maturedValue;s.value=0;s.matured=true;
+   }else{
+    const r=monthlyRate(s.i);if(r)s.value*=1+r;
     if(s.i.contribution_type==="Monthly")s.value+=Math.max(0,Number(s.i.monthly_addition||0));
    }
   });
-  pool=pool*(1+autoMonthly)+Math.max(0,Number(monthlySurplus||0))+(saved.get(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`)??0);
+  pool=pool*(1+autoMonthly)+Math.max(0,monthlySurplusAt(activities,d))+(saved.get(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`)??0);
   const value=states.reduce((s,x)=>s+x.value,0)+pool;
   points.push({date:d,value:Math.min(GOAL_TARGET,value)});
   if(value>=GOAL_TARGET)break;
