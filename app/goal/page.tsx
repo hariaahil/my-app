@@ -102,9 +102,8 @@ export default function GoalPage() {
     current_value: "",
   });
 
-  const supabase = useMemo(() => createClient(), []);
-
   async function loadUserData() {
+    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     setUserId(user?.id ?? null);
     setUserEmail(user?.email ?? null);
@@ -119,6 +118,7 @@ export default function GoalPage() {
 
   useEffect(() => {
     let mounted = true;
+    const supabase = createClient();
     loadUserData();
     const { data: listener } = supabase.auth.onAuthStateChange(() => {
       if (mounted) loadUserData();
@@ -127,7 +127,7 @@ export default function GoalPage() {
       mounted = false;
       listener.subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, []);
 
   const today = new Date();
   const currentTotal = investments.reduce((sum, inv) => sum + valueForDashboard(inv, today), 0);
@@ -149,6 +149,7 @@ export default function GoalPage() {
     e.preventDefault();
     if (!userId || !form.name.trim()) return;
     setSaving(true);
+    const supabase = createClient();
     const payload = {
       user_id: userId,
       name: form.name.trim(),
@@ -172,11 +173,13 @@ export default function GoalPage() {
   }
 
   async function removeInvestment(id: string) {
+    const supabase = createClient();
     await supabase.from("goal_investments").delete().eq("id", id);
     setInvestments(prev => prev.filter(item => item.id !== id));
   }
 
   async function logout() {
+    const supabase = createClient();
     await supabase.auth.signOut();
     window.location.href = "/goal";
   }
