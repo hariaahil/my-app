@@ -45,13 +45,10 @@ export function categorizeTransaction(description: string, amount: number, typeH
   const isCreditDirection = /\b(credit|credited|cr|received|deposit|income)\b/i.test(hint);
   const isDebitDirection = /\b(debit|debited|dr|paid|withdrawal|expense)\b/i.test(hint);
 
-  // Explicit movement between the user's own accounts always wins over amount/direction.
   if (/self[ -]?transfer|own account|own bank|to my (kotak|indusind|hdfc|icici|axis|sbi)|from my (kotak|indusind|hdfc|icici|axis|sbi)/i.test(text)) {
     return { category: "Transfer", semanticType: "transfer", confidence: 0.995, requiresReview: false, explanation: "Movement between your own accounts; excluded from income and spending." };
   }
 
-  // Never infer income merely because a payment source says "credit card".
-  // A GPay "Paid to ..." record is an outgoing payment even when the funding source is a credit card.
   if (/\bpaid\s+to\b/i.test(text) && !isCreditDirection) {
     if (lending.test(text)) return { category: "Other", semanticType: "money_lent", confidence: 0.88, requiresReview: true, explanation: "Money appears to have been given to another person; principal should be tracked as a lending asset, not spending." };
     if (chit.test(text)) return { category: "Investment", semanticType: "chit_contribution", confidence: 0.94, requiresReview: review(amount, 0.94), explanation: "Chit contribution is treated as a financial asset movement, not ordinary spending." };
@@ -59,13 +56,13 @@ export function categorizeTransaction(description: string, amount: number, typeH
     if (savingsUsed.test(text)) return { category: "Other", semanticType: "savings_used", confidence: 0.86, requiresReview: true, explanation: "Existing savings appear to be funding the transaction; this is not new income." };
   }
 
-  // Explicit incoming loan is a liability, not income.
   if (borrowed.test(text) && isCreditDirection) {
     return { category: "EMI / Loans", semanticType: "loan_received", confidence: 0.97, requiresReview: false, explanation: "Loan proceeds increase cash but also create a liability, so they are not counted as earned income." };
   }
 
-  // True incoming money is checked before ordinary merchant categories.
-  if (isCreditDirection || received.test(combined)) {
+  // Direction wins over words in merchant descriptions. In particular, a debit payment
+  // must never become Income merely because its text contains "income", "credit", etc.
+  if (isCreditDirection || (received.test(text) && !isDebitDirection)) {
     if (borrowed.test(text)) return { category: "EMI / Loans", semanticType: "loan_received", confidence: 0.97, requiresReview: false, explanation: "Loan proceeds are not income." };
     if (investmentWithdrawal.test(text)) return { category: "Investment", semanticType: "investment_withdrawal", confidence: 0.94, requiresReview: false, explanation: "Investment principal returning is not ordinary income." };
     if (savingsUsed.test(text)) return { category: "Other", semanticType: "savings_used", confidence: 0.86, requiresReview: true, explanation: "Existing savings are not new income." };
@@ -76,7 +73,6 @@ export function categorizeTransaction(description: string, amount: number, typeH
     return { category: "Income", semanticType: "income", confidence: 0.86, requiresReview: true, explanation: "Incoming transaction detected; confirm whether it is salary, interest, refund, investment proceeds, or another source." };
   }
 
-  // Strong semantic categories before generic merchant rules.
   if (/\bemi\b|loan repayment|loan instalment|loan installment|mortgage|home loan|car loan/i.test(text)) {
     const confidence = 0.94;
     return { category: "EMI / Loans", semanticType: "emi", confidence, requiresReview: review(amount, confidence), explanation: "Loan/EMI payment is a financial commitment and should be tracked separately from lifestyle spending." };
@@ -95,7 +91,7 @@ export function categorizeTransaction(description: string, amount: number, typeH
     }
   }
 
-  if (amount >= 50000) return { category: "Other", semanticType: isDebitDirection ? "unknown" : "unknown", confidence: 0.45, requiresReview: true, explanation: "Large or unusual transaction with no reliable category match; ask before treating it as ordinary spending." };
+  if (amount >= 50000) return { category: "Other", semanticType: "unknown", confidence: 0.45, requiresReview: true, explanation: "Large or unusual transaction with no reliable category match; ask before treating it as ordinary spending." };
   return { category: "Other", semanticType: isDebitDirection ? "expense" : "unknown", confidence: 0.35, requiresReview: true, explanation: "No reliable category match; keep it under review rather than guessing." };
 }
 
