@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BarChart3, Code2, Gamepad2, Newspaper, ShieldCheck, Trophy } from "lucide-react";
+import { ArrowRight, BarChart3, Code2, Gamepad2, Newspaper, ShieldCheck, Target, Trophy } from "lucide-react";
 
 const modules = [
   ["Markets", "NSE/BSE, indices, gainers, losers and charts", BarChart3, "/markets"],
@@ -8,6 +8,7 @@ const modules = [
   ["Developer Tools", "JSON, Base64, UUID, Regex, JWT and API utilities", Code2, "/tools"],
   ["Games", "Fast browser games with clean ad placements", Gamepad2, "/games"],
   ["My Finance", "Private planning, expenses, loans and investments", ShieldCheck, "/finance"],
+  ["₹70 Lakh Goal", "Simple progress tracker for your long-term target", Target, "/goal"],
 ] as const;
 
 export default function Home() {
@@ -33,7 +34,7 @@ export default function Home() {
           <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">A public platform for markets, news, sports and powerful tools — with your private finance workspace behind one account.</p>
           <div className="mt-9 flex flex-wrap gap-3">
             <Link href="/markets" className="inline-flex items-center gap-2 rounded-xl bg-violet-500 px-5 py-3 font-semibold hover:bg-violet-400">Explore TargetBud <ArrowRight size={17} /></Link>
-            <Link href="/finance" className="rounded-xl border border-white/15 bg-white/5 px-5 py-3 font-semibold hover:bg-white/10">Open My Finance</Link>
+            <Link href="/goal" className="rounded-xl border border-white/15 bg-white/5 px-5 py-3 font-semibold hover:bg-white/10">Track ₹70 Lakh Goal</Link>
           </div>
         </div>
 
