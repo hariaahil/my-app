@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CalendarDays, CheckCircle2, ChevronRight, CircleDollarSign, Clock3, LogIn, LogOut, Plus, Sparkles, TrendingUp, WalletCards, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, ChevronRight, CircleDollarSign, Clock3, LogIn, LogOut, Plus, TrendingUp, WalletCards, X } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
 
 type Investment = {
@@ -246,7 +246,7 @@ export default function GoalPage() {
           </div>
         </section>
 
-        <p className="mt-3 text-center text-xs text-slate-400">Your detailed calculations, investments and maturity dates open in pop-ups so the main screen stays simple.</p>
+        <p className="mt-3 text-center text-xs text-slate-400">Detailed investments, returns and maturity dates stay inside pop-ups so the main screen remains clean.</p>
       </div>
 
       {modal && (
