@@ -23,15 +23,6 @@ function dateValue(value: string) {
 function normalizeSourceAccount(value: string) {
   const raw = value.replace(/\s+/g, " ").trim();
   if (!raw) return undefined;
-
-  const card = raw.match(/^(.*?)\s+XX(\d{2})\s*\|\s*(.+)$/i);
-  if (card) {
-    const issuer = card[1].trim();
-    return `${issuer} ••XX${card[2]} | ${card[3].trim()}`;
-  }
-
-  const bank = raw.match(/^(.*?)\s+(\d{4})$/);
-  if (!bank) return raw;
   const aliases: Record<string, string> = {
     "kotak mahindra bank": "Kotak",
     "indusind bank": "IndusInd",
@@ -40,6 +31,15 @@ function normalizeSourceAccount(value: string) {
     "axis bank": "Axis",
     "hdfc bank": "HDFC",
   };
+
+  const card = raw.match(/^(.*?)\s+XX(\d{2})\s*\|\s*(.+)$/i);
+  if (card) {
+    const issuer = aliases[card[1].trim().toLowerCase()] || card[1].trim();
+    return `${issuer} ••XX${card[2]} | ${card[3].trim()}`;
+  }
+
+  const bank = raw.match(/^(.*?)\s+(\d{4})$/);
+  if (!bank) return raw;
   const institution = aliases[bank[1].toLowerCase()] || bank[1].trim();
   return `${institution} ••••${bank[2]}`;
 }
@@ -81,14 +81,7 @@ export async function extractPdfStatement(file: File): Promise<ParsedStatementTr
     const paidBy = block.match(/Paid\s*by\s*(.+?)(?=\s+₹|\s*$)/i);
     const sourceAccount = paidBy ? normalizeSourceAccount(paidBy[1]) : undefined;
 
-    result.push({
-      transaction_date: dateValue(dateText),
-      description,
-      amount,
-      transaction_type: "expense",
-      provider_transaction_id: payment[2],
-      source_account: sourceAccount,
-    });
+    result.push({ transaction_date: dateValue(dateText), description, amount, transaction_type: "expense", provider_transaction_id: payment[2], source_account: sourceAccount });
   }
 
   return [...new Map(result.map((r) => [r.provider_transaction_id || `${r.transaction_date}|${r.description.toLowerCase()}|${r.amount}|${r.transaction_type}`, r])).values()];
