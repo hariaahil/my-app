@@ -16,6 +16,30 @@ function dateValue(value: string) {
   return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
 }
 
+function normalizeSourceAccount(value: string) {
+  const raw = value.replace(/\s+/g, " ").trim();
+  if (!raw) return undefined;
+
+  const card = raw.match(/^(.*?)\s+XX(\d{2})\s*\|\s*(.+)$/i);
+  if (card) {
+    const issuer = card[1].trim();
+    return `${issuer} ••XX${card[2]} | ${card[3].trim()}`;
+  }
+
+  const bank = raw.match(/^(.*?)\s+(\d{4})$/);
+  if (!bank) return raw;
+  const aliases: Record<string, string> = {
+    "kotak mahindra bank": "Kotak",
+    "indusind bank": "IndusInd",
+    "slice small finance bank": "Slice",
+    "icici bank": "ICICI",
+    "axis bank": "Axis",
+    "hdfc bank": "HDFC",
+  };
+  const institution = aliases[bank[1].toLowerCase()] || bank[1].trim();
+  return `${institution} ••••${bank[2]}`;
+}
+
 export async function extractPdfStatement(file: File): Promise<ParsedStatementTransaction[]> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   pdfjs.GlobalWorkerOptions.workerSrc = "https://unpkg.com/pdfjs-dist@5.7.284/build/pdf.worker.mjs";
@@ -29,24 +53,31 @@ export async function extractPdfStatement(file: File): Promise<ParsedStatementTr
   }
   const text = pages.join("\n").replace(/\r/g, "");
   if (!text.trim()) throw new Error("This PDF has no selectable text. It may be a scanned statement and needs OCR.");
+
   const datePattern = /\b\d{1,2}\s*[A-Za-z]{3},\s*\d{4}\b/g;
   const dates = [...text.matchAll(datePattern)];
   const result: ParsedStatementTransaction[] = [];
+
   for (let i = 0; i < dates.length; i++) {
     const start = dates[i].index ?? 0;
     const end = i + 1 < dates.length ? (dates[i + 1].index ?? text.length) : text.length;
     const block = text.slice(start, end).replace(/\s+/g, " ").trim();
     const dateText = dates[i][0];
     const payment = block.match(/Paid\s*to\s*(.+?)\s+UPI\s*Transaction\s*ID\s*:\s*(\d{8,})/i);
-    if (!payment || /Self\s*transfer/i.test(block)) continue;
+    if (!payment) continue;
+
+    const description = payment[1].replace(/\s+/g, " ").trim();
+    if (description.length < 2) continue;
+    if (/^Self\s*transfer\s+to\b/i.test(description)) continue;
+
     const amountMatches = [...block.matchAll(/₹\s*\(?-?\d[\d,]*(?:\.\d{1,2})?\)?/g)];
     if (!amountMatches.length) continue;
     const amount = money(amountMatches[amountMatches.length - 1][0]);
     if (!amount) continue;
-    const description = payment[1].replace(/\s+/g, " ").trim();
-    if (description.length < 2) continue;
+
     const paidBy = block.match(/Paid\s*by\s*(.+?)(?=\s+₹|\s*$)/i);
-    const sourceAccount = paidBy?.[1]?.trim() || undefined;
+    const sourceAccount = paidBy ? normalizeSourceAccount(paidBy[1]) : undefined;
+
     result.push({
       transaction_date: dateValue(dateText),
       description,
@@ -56,5 +87,6 @@ export async function extractPdfStatement(file: File): Promise<ParsedStatementTr
       source_account: sourceAccount,
     });
   }
+
   return [...new Map(result.map((r) => [r.provider_transaction_id || `${r.transaction_date}|${r.description.toLowerCase()}|${r.amount}|${r.transaction_type}`, r])).values()];
 }
