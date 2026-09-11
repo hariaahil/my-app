@@ -12,8 +12,12 @@ function money(value: string) {
 }
 
 function dateValue(value: string) {
-  const d = new Date(value.replace(/,/g, ""));
-  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+  const match = value.match(/(\d{1,2})\s+([A-Za-z]{3}),\s*(\d{4})/);
+  if (!match) return null;
+  const [, day, monthText, year] = match;
+  const months: Record<string, string> = { Jan: "01", Feb: "02", Mar: "03", Apr: "04", May: "05", Jun: "06", Jul: "07", Aug: "08", Sep: "09", Oct: "10", Nov: "11", Dec: "12" };
+  const month = months[monthText.slice(0, 1).toUpperCase() + monthText.slice(1, 3).toLowerCase()];
+  return month ? `${year}-${month}-${day.padStart(2, "0")}` : null;
 }
 
 function normalizeSourceAccount(value: string) {
@@ -67,8 +71,7 @@ export async function extractPdfStatement(file: File): Promise<ParsedStatementTr
     if (!payment) continue;
 
     const description = payment[1].replace(/\s+/g, " ").trim();
-    if (description.length < 2) continue;
-    if (/^Self\s*transfer\s+to\b/i.test(description)) continue;
+    if (description.length < 2 || /^Self\s*transfer\s+to\b/i.test(description)) continue;
 
     const amountMatches = [...block.matchAll(/₹\s*\(?-?\d[\d,]*(?:\.\d{1,2})?\)?/g)];
     if (!amountMatches.length) continue;
