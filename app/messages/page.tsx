@@ -1,0 +1,5 @@
+import { MessageCircle } from "lucide-react";
+
+export default function MessagesPage() {
+  return <main className="min-h-[calc(100vh-56px)] bg-white text-black"><div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8"><header className="border-b border-black/10 pb-8"><p className="text-[11px] font-bold uppercase tracking-[.2em] text-black/45">Social</p><h1 className="mt-2 text-4xl font-semibold tracking-[-.04em]">Messages</h1><p className="mt-3 text-sm leading-6 text-black/55">Private conversations designed around people and the things they share on TargetBud.</p></header><div className="mt-8 grid min-h-[420px] place-items-center rounded-2xl border border-dashed border-black/15"><div className="max-w-sm px-6 text-center"><div className="mx-auto grid size-11 place-items-center rounded-xl bg-black text-white"><MessageCircle size={19}/></div><h2 className="mt-4 text-sm font-bold">No conversations yet</h2><p className="mt-1 text-sm leading-6 text-black/50">Messaging will connect to profiles, communities and shared TargetBud objects. We won't populate it with fake conversations.</p></div></div></div></main>;
+}
