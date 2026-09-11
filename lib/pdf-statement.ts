@@ -4,6 +4,7 @@ export type ParsedStatementTransaction = {
   amount: number;
   transaction_type: "income" | "expense";
   provider_transaction_id?: string;
+  source_account?: string;
 };
 
 function money(value: string) {
@@ -17,7 +18,6 @@ function dateValue(value: string) {
 
 export async function extractPdfStatement(file: File): Promise<ParsedStatementTransaction[]> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  // Keep the worker exactly aligned with the installed PDF.js API version.
   pdfjs.GlobalWorkerOptions.workerSrc = "https://unpkg.com/pdfjs-dist@5.7.284/build/pdf.worker.mjs";
 
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -31,12 +31,8 @@ export async function extractPdfStatement(file: File): Promise<ParsedStatementTr
   }
 
   const text = pages.join("\n").replace(/\r/g, "");
-  if (!text.trim()) {
-    throw new Error("This PDF has no selectable text. It may be a scanned statement and needs OCR.");
-  }
+  if (!text.trim()) throw new Error("This PDF has no selectable text. It may be a scanned statement and needs OCR.");
 
-  // Google Pay statements use dates such as "02 Aug, 2026" and PDF.js may
-  // flatten spaces, producing "02Aug,2026". Split on both forms.
   const datePattern = /\b\d{1,2}\s*[A-Za-z]{3},\s*\d{4}\b/g;
   const dates = [...text.matchAll(datePattern)];
   const result: ParsedStatementTransaction[] = [];
@@ -47,30 +43,28 @@ export async function extractPdfStatement(file: File): Promise<ParsedStatementTr
     const block = text.slice(start, end).replace(/\s+/g, " ").trim();
     const dateText = dates[i][0];
 
-    // Only payment rows are imported. Self-transfer rows are intentionally
-    // skipped because they are movements between the user's own accounts.
     const payment = block.match(/Paid\s*to\s*(.+?)\s+UPI\s*Transaction\s*ID\s*:\s*(\d{8,})/i);
     if (!payment || /Self\s*transfer/i.test(block)) continue;
 
     const amountMatches = [...block.matchAll(/₹\s*\(?-?\d[\d,]*(?:\.\d{1,2})?\)?/g)];
     if (!amountMatches.length) continue;
-
-    const rawAmount = amountMatches[amountMatches.length - 1][0];
-    const amount = money(rawAmount);
+    const amount = money(amountMatches[amountMatches.length - 1][0]);
     if (!amount) continue;
 
-    const description = payment[1]
-      .replace(/\s+/g, " ")
-      .trim();
+    const description = payment[1].replace(/\s+/g, " ").trim();
     if (description.length < 2) continue;
 
+    const paidBy = block.match(/Paid\s*by\s*(.+?)(?=\s+₹|\s*$)/i);
+    const sourceAccount = paidBy?.[1]?.trim() || undefined;
     const income = /\b(?:received|credited|credit|deposit|salary|interest)\b/i.test(block);
+
     result.push({
       transaction_date: dateValue(dateText),
       description,
       amount,
       transaction_type: income ? "income" : "expense",
       provider_transaction_id: payment[2],
+      source_account: sourceAccount,
     });
   }
 
