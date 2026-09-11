@@ -19,7 +19,7 @@ Paid by Kotak Mahindra Bank 8551
       amount: 800,
       transaction_type: "expense",
       provider_transaction_id: "119360638902",
-      source_account: "Kotak ••••8551",
+      source_account: "Kotak ••••8551::119360638902",
     });
   });
 
@@ -39,7 +39,7 @@ Paid to IndusInd Bank 9641
       amount: 150,
       transaction_type: "income",
       provider_transaction_id: "264208837139",
-      source_account: "IndusInd ••••9641",
+      source_account: "IndusInd ••••9641::264208837139",
     });
   });
 
@@ -55,8 +55,9 @@ Paid by Kotak Mahindra Bank 8551
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       transaction_date: "2026-03-05",
+      description: "Self transfer to ICICI Bank 2694",
       transaction_type: "transfer",
-      source_account: "Kotak ••••8551",
+      source_account: "Kotak ••••8551::119547325958",
       provider_transaction_id: "119547325958",
     });
   });
@@ -70,7 +71,7 @@ UPI Transaction ID: 648107511141
 Paid by ICICI Bank 2694 | Paid for Shirisha Goud with UPI Circle
 ₹100
 `);
-    expect(rows[0]?.source_account).toBe("ICICI ••••2694");
+    expect(rows[0]?.source_account).toBe("ICICI ••••2694::648107511141");
   });
 
   it("deduplicates by provider transaction ID", () => {
