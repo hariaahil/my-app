@@ -76,7 +76,8 @@ export function parseStatementText(text: string): ParsedStatementTransaction[] {
     if (!amount) continue;
 
     const transaction_type = selfTransfer ? "transfer" : received ? "income" : "expense";
-    const description = match[1].replace(/\s+/g, " ").trim();
+    const rawDescription = match[1].replace(/\s+/g, " ").trim();
+    const description = selfTransfer ? `Self transfer to ${rawDescription}` : rawDescription;
     if (description.length < 2) continue;
 
     const sourceAccount = selfTransfer || paid ? accountFrom(block, "Paid by") : accountFrom(block, "Paid to");
