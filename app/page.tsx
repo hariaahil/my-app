@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, BarChart3, Code2, Gamepad2, Newspaper, Target, Trophy } from "lucide-react";
+import AuthButton from "@/components/auth-button";
 
 const modules = [
   ["Markets", "NSE/BSE, indices, gainers, losers and charts", BarChart3, "/markets"],
@@ -7,7 +8,7 @@ const modules = [
   ["Sports", "Cricket, football, tennis and basketball", Trophy, "/sports"],
   ["Developer Tools", "JSON, Base64, UUID, Regex, JWT and API utilities", Code2, "/tools"],
   ["Games", "Fast browser games with clean ad placements", Gamepad2, "/games"],
-  ["₹70 Lakh Goal", "Your simple long-term target tracker", Target, "/goal"],
+  ["₹70 Lakh Goal", "Track cash and investments with interest and maturity projections", Target, "/goal"],
 ] as const;
 
 export default function Home() {
@@ -16,13 +17,12 @@ export default function Home() {
       <header className="sticky top-0 z-20 border-b border-white/10 bg-[#07111f]/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8">
           <Link href="/" className="flex items-center gap-3 font-semibold tracking-tight">
-            <span className="grid size-9 place-items-center rounded-xl bg-violet-500 font-black">T</span>
-            <span>TargetBud</span>
+            <span className="grid size-9 place-items-center rounded-xl bg-violet-500 font-black">T</span><span>TargetBud</span>
           </Link>
           <nav className="hidden gap-7 text-sm text-slate-300 md:flex">
             <Link href="/markets">Markets</Link><Link href="/news">News</Link><Link href="/sports">Sports</Link><Link href="/tools">Tools</Link>
           </nav>
-          <Link href="/goal" className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10">₹70 Lakh Goal</Link>
+          <div className="flex items-center gap-2"><Link href="/goal" className="hidden rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10 sm:block">₹70 Lakh Goal</Link><AuthButton /></div>
         </div>
       </header>
 
@@ -30,24 +30,13 @@ export default function Home() {
         <div className="max-w-4xl">
           <div className="mb-5 inline-flex rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1 text-xs font-semibold tracking-[.18em] text-violet-200">ONE TARGET · ₹70 LAKH</div>
           <h1 className="text-5xl font-semibold tracking-[-.04em] sm:text-7xl">Build toward<br /><span className="text-violet-300">₹70 lakh.</span></h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">Track your ₹70 lakh target with a simple progress view, monthly contribution and estimated completion date.</p>
-          <div className="mt-9 flex flex-wrap gap-3">
-            <Link href="/goal" className="inline-flex items-center gap-2 rounded-xl bg-violet-500 px-5 py-3 font-semibold hover:bg-violet-400">Open ₹70 Lakh Goal <ArrowRight size={17} /></Link>
-          </div>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">Track cash and investments, including principal, interest, additions and maturity projections.</p>
+          <div className="mt-9 flex flex-wrap gap-3"><Link href="/goal" className="inline-flex items-center gap-2 rounded-xl bg-violet-500 px-5 py-3 font-semibold hover:bg-violet-400">Open ₹70 Lakh Goal <ArrowRight size={17} /></Link></div>
         </div>
-
         <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {modules.map(([name, description, Icon, href]) => (
-            <Link key={name} href={href} className="group rounded-2xl border border-white/10 bg-white/[.045] p-6 transition hover:-translate-y-1 hover:border-violet-400/30 hover:bg-white/[.07]">
-              <div className="mb-10 grid size-11 place-items-center rounded-xl bg-white/10 text-violet-200"><Icon size={21} /></div>
-              <h2 className="text-xl font-semibold">{name}</h2>
-              <p className="mt-2 min-h-12 text-sm leading-6 text-slate-400">{description}</p>
-              <div className="mt-5 text-sm font-medium text-violet-300">Open module →</div>
-            </Link>
-          ))}
+          {modules.map(([name, description, Icon, href]) => <Link key={name} href={href} className="group rounded-2xl border border-white/10 bg-white/[.045] p-6 transition hover:-translate-y-1 hover:border-violet-400/30 hover:bg-white/[.07]"><div className="mb-10 grid size-11 place-items-center rounded-xl bg-white/10 text-violet-200"><Icon size={21} /></div><h2 className="text-xl font-semibold">{name}</h2><p className="mt-2 min-h-12 text-sm leading-6 text-slate-400">{description}</p><div className="mt-5 text-sm font-medium text-violet-300">Open module →</div></Link>)}
         </div>
       </section>
-
       <footer className="border-t border-white/10 px-5 py-8 text-center text-sm text-slate-500">© 2026 TargetBud · Built for the long term.</footer>
     </main>
   );
