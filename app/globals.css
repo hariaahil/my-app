@@ -28,7 +28,7 @@ button:disabled { cursor: not-allowed; }
 ::selection { background: #111; color: #fff; }
 :focus-visible { outline: 2px solid #111; outline-offset: 3px; }
 
-/* TargetBud monochrome primitives. Components can use these consistently. */
+/* TargetBud monochrome primitives. */
 .tb-surface { background: #fff; border: 1px solid #e5e5e5; }
 .tb-subtle { background: #f7f7f7; }
 .tb-muted { color: #666; }
@@ -36,6 +36,34 @@ button:disabled { cursor: not-allowed; }
 .tb-primary { background: #111; color: #fff; }
 .tb-primary:hover { background: #2a2a2a; }
 .tb-transition { transition: background-color .18s ease, border-color .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease; }
+
+/* Legacy page classes are intentionally flattened to the same neutral palette.
+   This keeps older feature pages monochrome until their markup is refactored. */
+[class*="violet"], [class*="purple"], [class*="indigo"], [class*="blue"],
+[class*="cyan"], [class*="sky"], [class*="teal"], [class*="emerald"],
+[class*="green"], [class*="lime"], [class*="yellow"], [class*="amber"],
+[class*="orange"], [class*="red"], [class*="rose"], [class*="pink"],
+[class*="fuchsia"] { color: #111 !important; border-color: #e5e5e5 !important; }
+
+[class*="bg-violet"], [class*="bg-purple"], [class*="bg-indigo"], [class*="bg-blue"],
+[class*="bg-cyan"], [class*="bg-sky"], [class*="bg-teal"], [class*="bg-emerald"],
+[class*="bg-green"], [class*="bg-lime"], [class*="bg-yellow"], [class*="bg-amber"],
+[class*="bg-orange"], [class*="bg-red"], [class*="bg-rose"], [class*="bg-pink"],
+[class*="bg-fuchsia"] { background-color: #f7f7f7 !important; }
+
+[class*="from-violet"], [class*="from-purple"], [class*="from-indigo"], [class*="from-blue"],
+[class*="from-emerald"], [class*="from-green"], [class*="from-red"], [class*="from-orange"],
+[class*="to-violet"], [class*="to-purple"], [class*="to-indigo"], [class*="to-blue"],
+[class*="to-emerald"], [class*="to-green"], [class*="to-red"], [class*="to-orange"] {
+  --tw-gradient-from: #f7f7f7 !important;
+  --tw-gradient-to: #ffffff !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+/* Known legacy dark surfaces are neutralized as well. */
+[class*="bg-[#07111f"], [class*="bg-[#0b1220"], [class*="bg-[#10131a"], [class*="bg-[#111827"]],
+[class*="bg-[#0f172a"], [class*="bg-[#020617"]] { background-color: #fff !important; }
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
