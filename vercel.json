@@ -1,4 +1,7 @@
 {
   "framework": "nextjs",
-  "outputDirectory": ".next"
+  "outputDirectory": ".next",
+  "crons": [
+    { "path": "/api/content/daily", "schedule": "0 3 * * *" }
+  ]
 }
