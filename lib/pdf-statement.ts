@@ -10,6 +10,9 @@ function dateValue(value: string) { const d = new Date(value); return Number.isN
 
 export async function extractPdfStatement(file: File): Promise<ParsedStatementTransaction[]> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  // pdfjs-dist 5 requires an explicit worker URL in the browser.
+  // Pin it to the installed package version so the API and worker stay compatible.
+  pdfjs.GlobalWorkerOptions.workerSrc = "https://unpkg.com/pdfjs-dist@5.4.54/build/pdf.worker.mjs";
   const bytes = new Uint8Array(await file.arrayBuffer());
   const pdf = await pdfjs.getDocument({ data: bytes }).promise;
   const lines: string[] = [];
