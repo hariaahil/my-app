@@ -1,6 +1,75 @@
 "use client";
+
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Menu, Search, X } from "lucide-react";
-const items=[{name:"Finance",href:"/goal",keywords:"finance financial goal wallet investments income expenses insights"},{name:"Markets",href:"/markets",keywords:"markets stocks nse bse indices gainers losers charts"},{name:"News",href:"/news",keywords:"news india world business technology ai finance"},{name:"Sports",href:"/sports",keywords:"sports cricket football tennis basketball scores fixtures"},{name:"Developer Tools",href:"/tools",keywords:"developer tools json base64 uuid jwt regex api html css javascript seo"},{name:"Journal",href:"/blog",keywords:"journal blog ai stocks sports articles"},{name:"Games",href:"/games",keywords:"games browser games"}] as const;
-export default function SiteNavigation(){const[searchOpen,setSearchOpen]=useState(false),[mobileOpen,setMobileOpen]=useState(false),[query,setQuery]=useState("");const inputRef=useRef<HTMLInputElement>(null);const results=useMemo(()=>{const q=query.trim().toLowerCase();return q?items.filter(i=>`${i.name} ${i.keywords}`.includes(q)):items},[query]);const openSearch=()=>{setMobileOpen(false);setSearchOpen(true);requestAnimationFrame(()=>inputRef.current?.focus())};const closeSearch=()=>{setSearchOpen(false);setQuery("")};useEffect(()=>{const onKey=(e:KeyboardEvent)=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();openSearch()}else if(e.key==="/"&&document.activeElement?.tagName!=="INPUT"&&document.activeElement?.tagName!=="TEXTAREA"){e.preventDefault();openSearch()}else if(e.key==="Escape"){closeSearch();setMobileOpen(false)}};window.addEventListener("keydown",onKey);return()=>window.removeEventListener("keydown",onKey)},[]);return <><header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur-xl"><div className="mx-auto flex min-h-14 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8"><Link href="/" className="flex shrink-0 items-center gap-2 font-black tracking-tight"><span className="grid size-8 place-items-center rounded-lg bg-black text-sm text-white">T</span><span className="hidden sm:inline">TargetBud</span></Link><nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 md:flex">{items.slice(0,6).map(i=><Link key={i.href} href={i.href} className="rounded-lg px-3 py-2 text-xs font-bold text-black/60 hover:bg-black/[.04] hover:text-black">{i.name}</Link>)}</nav><div className="ml-auto flex items-center gap-2"><button onClick={openSearch} className="inline-flex h-9 items-center gap-2 rounded-xl border border-black/10 px-3 text-xs font-bold text-black/60 hover:bg-black/[.04]" aria-label="Search TargetBud"><Search size={15}/><span className="hidden sm:inline">Search</span><kbd className="hidden rounded-md border border-black/10 px-1.5 py-0.5 font-mono text-[10px] lg:inline">⌘K</kbd></button><button onClick={()=>setMobileOpen(v=>!v)} className="grid size-9 place-items-center rounded-xl border border-black/10 md:hidden" aria-label="Open navigation" aria-expanded={mobileOpen}>{mobileOpen?<X size={18}/>:<Menu size={18}/>}</button></div></div>{mobileOpen&&<div className="border-t border-black/10 bg-white md:hidden"><div className="grid grid-cols-2 gap-1 p-2">{items.map(i=><Link key={i.href} href={i.href} onClick={()=>setMobileOpen(false)} className="rounded-xl px-3 py-3 text-sm font-bold hover:bg-black/[.04]">{i.name}</Link>)}</div></div>}</header>{searchOpen&&<div className="fixed inset-0 z-[60] bg-black/20 p-3 pt-20 backdrop-blur-sm" onMouseDown={e=>{if(e.target===e.currentTarget)closeSearch()}}><section className="mx-auto max-w-xl overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl" role="dialog" aria-modal="true" aria-label="TargetBud search"><div className="flex items-center gap-3 border-b border-black/10 px-4"><Search size={18} className="text-black/45"/><input ref={inputRef} value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search Finance, Markets, JSON, Sports…" className="min-w-0 flex-1 py-4 text-base outline-none"/><button onClick={closeSearch} className="grid size-8 place-items-center rounded-lg hover:bg-black/[.05]" aria-label="Close search"><X size={17}/></button></div><div className="max-h-[60vh] overflow-y-auto p-2">{results.map(i=><Link key={i.href} href={i.href} onClick={closeSearch} className="flex items-center justify-between rounded-xl px-4 py-3 hover:bg-black/[.04]"><span><span className="block text-sm font-bold">{i.name}</span><span className="block text-xs text-black/45">{i.href}</span></span><span className="text-black/30">→</span></Link>)}{!results.length&&<p className="p-5 text-center text-sm text-black/45">No matching TargetBud section yet.</p>}</div><div className="border-t border-black/10 px-4 py-2 text-[11px] text-black/40">Press <b>Esc</b> to close · <b>/</b> or <b>⌘K</b> to search</div></section></div>}</>}
+import { ChevronDown, Compass, Menu, Search, Users, X } from "lucide-react";
+
+const primary = [
+  { name: "Home", href: "/" },
+  { name: "Finance", href: "/goal" },
+  { name: "Markets", href: "/markets" },
+  { name: "News", href: "/news" },
+  { name: "Sports", href: "/sports" },
+  { name: "Tools", href: "/tools" },
+];
+
+const destinations = [
+  ...primary.map((x) => ({ ...x, group: "Core", keywords: `${x.name} targetbud` })),
+  { name: "Discover", href: "/discover", group: "Social", keywords: "discover people topics communities for you trending" },
+  { name: "Communities", href: "/communities", group: "Social", keywords: "communities groups topics discussion" },
+  { name: "Messages", href: "/messages", group: "Social", keywords: "messages chat direct conversation" },
+  { name: "Journal", href: "/blog", group: "Content", keywords: "journal blog articles ai market sports" },
+  { name: "Games", href: "/games", group: "More", keywords: "games browser" },
+];
+
+export default function SiteNavigation() {
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? destinations.filter((item) => `${item.name} ${item.keywords}`.includes(q)) : destinations;
+  }, [query]);
+
+  const openSearch = () => {
+    setMobileOpen(false);
+    setSearchOpen(true);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+  const closeSearch = () => { setSearchOpen(false); setQuery(""); };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); openSearch(); }
+      else if (e.key === "/" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") { e.preventDefault(); openSearch(); }
+      else if (e.key === "Escape") { closeSearch(); setMobileOpen(false); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  return <>
+    <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur-xl">
+      <div className="mx-auto flex min-h-14 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
+        <Link href="/" className="flex shrink-0 items-center gap-2 font-black tracking-tight"><span className="grid size-8 place-items-center rounded-lg bg-black text-sm text-white">T</span><span className="hidden sm:inline">TargetBud</span></Link>
+        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 md:flex">{primary.slice(1).map((item) => <Link key={item.href} href={item.href} className="rounded-lg px-3 py-2 text-xs font-bold text-black/60 hover:bg-black/[.04] hover:text-black">{item.name}</Link>)}</nav>
+        <div className="ml-auto flex items-center gap-2">
+          <Link href="/discover" className="hidden h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-bold text-black/55 hover:bg-black/[.04] hover:text-black lg:inline-flex"><Compass size={15}/> Discover</Link>
+          <Link href="/communities" className="hidden h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-bold text-black/55 hover:bg-black/[.04] hover:text-black xl:inline-flex"><Users size={15}/> Communities</Link>
+          <button onClick={openSearch} className="inline-flex h-9 items-center gap-2 rounded-xl border border-black/10 px-3 text-xs font-bold text-black/60 hover:bg-black/[.04]" aria-label="Search TargetBud"><Search size={15}/><span className="hidden sm:inline">Search</span><kbd className="hidden rounded-md border border-black/10 px-1.5 py-0.5 font-mono text-[10px] lg:inline">⌘K</kbd></button>
+          <button onClick={() => setMobileOpen((v) => !v)} className="grid size-9 place-items-center rounded-xl border border-black/10 md:hidden" aria-label="Open navigation" aria-expanded={mobileOpen}>{mobileOpen ? <X size={18}/> : <Menu size={18}/>}</button>
+        </div>
+      </div>
+      {mobileOpen && <div className="border-t border-black/10 bg-white md:hidden"><div className="grid grid-cols-2 gap-1 p-2">{destinations.map((item) => <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className="rounded-xl px-3 py-3 text-sm font-bold hover:bg-black/[.04]">{item.name}</Link>)}</div></div>}
+    </header>
+
+    {searchOpen && <div className="fixed inset-0 z-[60] bg-black/25 p-3 pt-16 backdrop-blur-sm sm:pt-24" onMouseDown={(e) => { if (e.target === e.currentTarget) closeSearch(); }}>
+      <section className="mx-auto max-w-2xl overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl" role="dialog" aria-modal="true" aria-label="Search TargetBud">
+        <div className="flex items-center gap-3 border-b border-black/10 px-4"><Search size={18} className="text-black/45"/><input ref={inputRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search TargetBud or type an action…" className="min-w-0 flex-1 py-4 text-base outline-none"/><button onClick={closeSearch} className="grid size-8 place-items-center rounded-lg hover:bg-black/[.05]" aria-label="Close search"><X size={17}/></button></div>
+        <div className="max-h-[62vh] overflow-y-auto p-2">{results.map((item) => <Link key={item.href} href={item.href} onClick={closeSearch} className="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-black/[.04]"><span className="grid size-8 place-items-center rounded-lg bg-black/[.05]"><ChevronDown size={15} className="-rotate-90"/></span><span className="min-w-0"><b className="block text-sm">{item.name}</b><span className="block truncate text-xs text-black/45">{item.group} · {item.href}</span></span></Link>)}{!results.length && <div className="p-8 text-center"><p className="text-sm font-bold">No matching destination</p><p className="mt-1 text-xs text-black/45">Try a section, topic or tool name.</p></div>}</div>
+        <div className="border-t border-black/10 px-4 py-2 text-[11px] text-black/40">Esc close · / or ⌘K search</div>
+      </section>
+    </div>}
+  </>;
+}
