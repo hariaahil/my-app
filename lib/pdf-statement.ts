@@ -31,13 +31,11 @@ function normalizeSourceAccount(value: string) {
     "axis bank": "Axis",
     "hdfc bank": "HDFC",
   };
-
   const card = raw.match(/^(.*?)\s+XX(\d{2})\s*\|\s*(.+)$/i);
   if (card) {
     const issuer = aliases[card[1].trim().toLowerCase()] || card[1].trim();
     return `${issuer} ••XX${card[2]} | ${card[3].trim()}`;
   }
-
   const bank = raw.match(/^(.*?)\s+(\d{4})$/);
   if (!bank) return raw;
   const institution = aliases[bank[1].toLowerCase()] || bank[1].trim();
@@ -69,7 +67,6 @@ export async function extractPdfStatement(file: File): Promise<ParsedStatementTr
     const dateText = dates[i][0];
     const payment = block.match(/Paid\s*to\s*(.+?)\s+UPI\s*Transaction\s*ID\s*:\s*(\d{8,})/i);
     if (!payment) continue;
-
     const description = payment[1].replace(/\s+/g, " ").trim();
     if (description.length < 2 || /^Self\s*transfer\s+to\b/i.test(description)) continue;
 
@@ -79,7 +76,8 @@ export async function extractPdfStatement(file: File): Promise<ParsedStatementTr
     if (!amount) continue;
 
     const paidBy = block.match(/Paid\s*by\s*(.+?)(?=\s+₹|\s*$)/i);
-    const sourceAccount = paidBy ? normalizeSourceAccount(paidBy[1]) : undefined;
+    const normalizedAccount = paidBy ? normalizeSourceAccount(paidBy[1]) : undefined;
+    const sourceAccount = normalizedAccount ? `${normalizedAccount}::${payment[2]}` : undefined;
 
     result.push({ transaction_date: dateValue(dateText), description, amount, transaction_type: "expense", provider_transaction_id: payment[2], source_account: sourceAccount });
   }
