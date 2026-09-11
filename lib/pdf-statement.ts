@@ -80,7 +80,8 @@ export function parseStatementText(text: string): ParsedStatementTransaction[] {
     const description = selfTransfer ? `Self transfer to ${rawDescription}` : rawDescription;
     if (description.length < 2) continue;
 
-    const sourceAccount = selfTransfer || paid ? accountFrom(block, "Paid by") : accountFrom(block, "Paid to");
+    const account = selfTransfer || paid ? accountFrom(block, "Paid by") : accountFrom(block, "Paid to");
+    const sourceAccount = account ? `${account}::${match[2]}` : undefined;
 
     result.push({
       transaction_date: dateValue(dateText),
