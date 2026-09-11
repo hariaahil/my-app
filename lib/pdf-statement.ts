@@ -2,13 +2,13 @@ export type ParsedStatementTransaction = {
   transaction_date: string | null;
   description: string;
   amount: number;
-  transaction_type: "income" | "expense";
+  transaction_type: "income" | "expense" | "transfer";
   provider_transaction_id?: string;
   source_account?: string;
 };
 
 function money(value: string) {
-  return Math.abs(Number(value.replace(/[₹,\s]/g, "")) || 0);
+  return Math.abs(Number(value.replace(/[₹,\s()]/g, "")) || 0);
 }
 
 function dateValue(value: string) {
@@ -30,16 +30,25 @@ function normalizeSourceAccount(value: string) {
     "icici bank": "ICICI",
     "axis bank": "Axis",
     "hdfc bank": "HDFC",
+    "federal bank": "Federal",
   };
+
   const card = raw.match(/^(.*?)\s+XX(\d{2})\s*\|\s*(.+)$/i);
   if (card) {
     const issuer = aliases[card[1].trim().toLowerCase()] || card[1].trim();
     return `${issuer} ••XX${card[2]} | ${card[3].trim()}`;
   }
-  const bank = raw.match(/^(.*?)\s+(\d{4})$/);
+
+  // GPay Circle rows append the delegated payer text after the account number.
+  const bank = raw.match(/^(.*?)\s+(\d{4})(?:\s*\|\s*Paid\s+for\s+.+)?$/i);
   if (!bank) return raw;
-  const institution = aliases[bank[1].toLowerCase()] || bank[1].trim();
+  const institution = aliases[bank[1].trim().toLowerCase()] || bank[1].trim();
   return `${institution} ••••${bank[2]}`;
+}
+
+function accountFrom(text: string, label: "Paid by" | "Paid to") {
+  const match = text.match(new RegExp(`${label.replace(" ", "\\s+")}\\s+(.+?)(?=\\s+₹|\\s*$)`, "i"));
+  return match ? normalizeSourceAccount(match[1]) : undefined;
 }
 
 export async function extractPdfStatement(file: File): Promise<ParsedStatementTransaction[]> {
@@ -53,6 +62,7 @@ export async function extractPdfStatement(file: File): Promise<ParsedStatementTr
     const content = await page.getTextContent();
     pages.push(content.items.map((item) => ("str" in item ? item.str : "")).join("\n"));
   }
+
   const text = pages.join("\n").replace(/\r/g, "");
   if (!text.trim()) throw new Error("This PDF has no selectable text. It may be a scanned statement and needs OCR.");
 
@@ -65,21 +75,34 @@ export async function extractPdfStatement(file: File): Promise<ParsedStatementTr
     const end = i + 1 < dates.length ? (dates[i + 1].index ?? text.length) : text.length;
     const block = text.slice(start, end).replace(/\s+/g, " ").trim();
     const dateText = dates[i][0];
-    const payment = block.match(/Paid\s*to\s*(.+?)\s+UPI\s*Transaction\s*ID\s*:\s*(\d{8,})/i);
-    if (!payment) continue;
-    const description = payment[1].replace(/\s+/g, " ").trim();
-    if (description.length < 2 || /^Self\s*transfer\s+to\b/i.test(description)) continue;
+
+    const selfTransfer = block.match(/Self\s+transfer\s+to\s+(.+?)\s+UPI\s*Transaction\s*ID\s*:\s*(\d{8,})/i);
+    const received = block.match(/Received\s+from\s+(.+?)\s+UPI\s*Transaction\s*ID\s*:\s*(\d{8,})/i);
+    const paid = block.match(/Paid\s+to\s+(.+?)\s+UPI\s*Transaction\s*ID\s*:\s*(\d{8,})/i);
+    const match = selfTransfer || received || paid;
+    if (!match) continue;
 
     const amountMatches = [...block.matchAll(/₹\s*\(?-?\d[\d,]*(?:\.\d{1,2})?\)?/g)];
     if (!amountMatches.length) continue;
     const amount = money(amountMatches[amountMatches.length - 1][0]);
     if (!amount) continue;
 
-    const paidBy = block.match(/Paid\s*by\s*(.+?)(?=\s+₹|\s*$)/i);
-    const normalizedAccount = paidBy ? normalizeSourceAccount(paidBy[1]) : undefined;
-    const sourceAccount = normalizedAccount ? `${normalizedAccount}::${payment[2]}` : undefined;
+    const transaction_type = selfTransfer ? "transfer" : received ? "income" : "expense";
+    const description = match[1].replace(/\s+/g, " ").trim();
+    if (description.length < 2) continue;
 
-    result.push({ transaction_date: dateValue(dateText), description, amount, transaction_type: "expense", provider_transaction_id: payment[2], source_account: sourceAccount });
+    // For outgoing payments and self-transfers the source is Paid by.
+    // For incoming payments the user's receiving account is the Paid to account.
+    const sourceAccount = selfTransfer || paid ? accountFrom(block, "Paid by") : accountFrom(block, "Paid to");
+
+    result.push({
+      transaction_date: dateValue(dateText),
+      description,
+      amount,
+      transaction_type,
+      provider_transaction_id: match[2],
+      source_account: sourceAccount,
+    });
   }
 
   return [...new Map(result.map((r) => [r.provider_transaction_id || `${r.transaction_date}|${r.description.toLowerCase()}|${r.amount}|${r.transaction_type}`, r])).values()];
