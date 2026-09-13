@@ -1,10 +1,38 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+const title = "Financial Calculators — EMI, SIP, FD, RD & Interest | TargetBud";
+const description = "Free financial calculators for home loans, personal loans, car loans, education loans, SIP, FD, RD, simple interest and compound interest.";
+const canonical = "https://targetbud.vercel.app/calculators";
+
 export const metadata: Metadata = {
-  title: "Financial Calculators — EMI, SIP, FD, RD & Interest",
-  description: "Free financial calculators for home loans, personal loans, car loans, education loans, SIP, FD, RD, simple interest and compound interest.",
-  alternates: { canonical: "https://targetbud.vercel.app/calculators" },
+  title,
+  description,
+  keywords: [
+    "financial calculators",
+    "home loan EMI calculator",
+    "personal loan EMI calculator",
+    "car loan EMI calculator",
+    "education loan EMI calculator",
+    "SIP calculator",
+    "FD calculator",
+    "RD calculator",
+    "simple interest calculator",
+    "compound interest calculator",
+  ],
+  alternates: { canonical },
+  openGraph: {
+    title,
+    description,
+    url: canonical,
+    siteName: "TargetBud",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title,
+    description,
+  },
 };
 
 const calculators = [
