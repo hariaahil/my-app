@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-const title = "Financial Calculators — EMI, SIP, FD, RD & Interest | TargetBud";
+const title = "Financial Calculators — EMI, SIP, FD, RD & Interest";
 const description = "Free financial calculators for home loans, personal loans, car loans, education loans, SIP, FD, RD, simple interest and compound interest.";
 const canonical = "https://targetbud.vercel.app/calculators";
 
