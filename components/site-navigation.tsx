@@ -53,15 +53,15 @@ export default function SiteNavigation() {
     <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur-xl">
       <div className="mx-auto flex min-h-14 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex shrink-0 items-center gap-2 font-black tracking-tight"><span className="grid size-8 place-items-center rounded-lg bg-black text-sm text-white">T</span><span className="hidden sm:inline">TargetBud</span></Link>
-        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 md:flex">{primary.slice(1).map((item) => <Link key={item.href} href={item.href} className="rounded-lg px-3 py-2 text-xs font-bold text-black/60 hover:bg-black/[.04] hover:text-black">{item.name}</Link>)}</nav>
+        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 lg:flex">{primary.slice(1).map((item) => <Link key={item.href} href={item.href} className="rounded-lg px-3 py-2 text-xs font-bold text-black/60 hover:bg-black/[.04] hover:text-black">{item.name}</Link>)}</nav>
         <div className="ml-auto flex items-center gap-2">
-          <Link href="/discover" className="hidden h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-bold text-black/55 hover:bg-black/[.04] hover:text-black lg:inline-flex"><Compass size={15}/> Discover</Link>
-          <Link href="/communities" className="hidden h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-bold text-black/55 hover:bg-black/[.04] hover:text-black xl:inline-flex"><Users size={15}/> Communities</Link>
+          <Link href="/discover" className="hidden h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-bold text-black/55 hover:bg-black/[.04] hover:text-black xl:inline-flex"><Compass size={15}/> Discover</Link>
+          <Link href="/communities" className="hidden h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-bold text-black/55 hover:bg-black/[.04] hover:text-black 2xl:inline-flex"><Users size={15}/> Communities</Link>
           <button onClick={openSearch} className="inline-flex h-9 items-center gap-2 rounded-xl border border-black/10 px-3 text-xs font-bold text-black/60 hover:bg-black/[.04]" aria-label="Search TargetBud"><Search size={15}/><span className="hidden sm:inline">Search</span><kbd className="hidden rounded-md border border-black/10 px-1.5 py-0.5 font-mono text-[10px] lg:inline">⌘K</kbd></button>
-          <button onClick={() => setMobileOpen((v) => !v)} className="grid size-9 place-items-center rounded-xl border border-black/10 md:hidden" aria-label="Open navigation" aria-expanded={mobileOpen}>{mobileOpen ? <X size={18}/> : <Menu size={18}/>}</button>
+          <button onClick={() => setMobileOpen((v) => !v)} className="grid size-9 place-items-center rounded-xl border border-black/10 lg:hidden" aria-label={mobileOpen ? "Close navigation" : "Open navigation"} aria-expanded={mobileOpen} aria-controls="mobile-navigation">{mobileOpen ? <X size={18}/> : <Menu size={18}/>}</button>
         </div>
       </div>
-      {mobileOpen && <div className="border-t border-black/10 bg-white md:hidden"><div className="grid grid-cols-2 gap-1 p-2">{destinations.map((item) => <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className="rounded-xl px-3 py-3 text-sm font-bold hover:bg-black/[.04]">{item.name}</Link>)}</div></div>}
+      {mobileOpen && <div id="mobile-navigation" className="border-t border-black/10 bg-white lg:hidden"><div className="grid grid-cols-2 gap-1 p-2 sm:grid-cols-3">{destinations.map((item) => <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className="rounded-xl px-3 py-3 text-sm font-bold hover:bg-black/[.04]">{item.name}</Link>)}</div></div>}
     </header>
 
     {searchOpen && <div className="fixed inset-0 z-[60] bg-black/25 p-3 pt-16 backdrop-blur-sm sm:pt-24" onMouseDown={(e) => { if (e.target === e.currentTarget) closeSearch(); }}>
