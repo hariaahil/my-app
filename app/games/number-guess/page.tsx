@@ -59,7 +59,7 @@ export default function NumberGuessPage() {
         </form>
 
         <div id="game-message" aria-live="polite" className="mt-5 rounded-xl bg-black/[.04] p-4 text-sm font-bold">{message}</div>
-        <div className="mt-4 flex items-center justify-between text-xs text-black/50"><span>Attempts: {attempts}</span><button type="button" onClick={reset} className="rounded-lg px-3 py-2 font-bold underline underline-offset-4 hover:bg-black/[.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black">{won ? "Play again" : "Reset"}</button></div>
+        <div className="mt-4 flex items-center justify-between text-xs text-black/50"><span aria-live="polite">Attempts: {attempts}</span><button type="button" onClick={reset} className="rounded-lg px-3 py-2 font-bold underline underline-offset-4 hover:bg-black/[.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black">{won ? "Play again" : "Reset"}</button></div>
       </section>
     </main>
   );
