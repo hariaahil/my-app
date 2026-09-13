@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { developerToolSeo, siteUrl } from "@/lib/developer-tools-seo";
 
 const calculatorSlugs = ["home-loan-emi","personal-loan-emi","car-loan-emi","two-wheeler-loan-emi","education-loan-emi","sip","fd","rd","simple-interest","compound-interest"];
-const gameSlugs = ["number-guess", "quick-math"];
+const gameSlugs = ["number-guess", "quick-math", "skyfall-arena"];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
