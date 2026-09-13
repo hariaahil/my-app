@@ -47,10 +47,20 @@ Target server size: **100 concurrent players**. A player can enter with 1 player
 - [x] A prototype **Secure loot** action moves carried loot into a local safe stash.
 - [x] Collection nodes disappear after collection during the current play session.
 
+### Steal / recovery prototype
+- [x] Nearby unprotected remote players can be selected as steal targets.
+- [x] **Q / mobile STEAL** performs a limited, non-destructive prototype theft of up to 3 carried units.
+- [x] Stealing raises the local prototype risk state to **Wanted** and has a cooldown.
+- [x] Protected players cannot initiate theft and cannot be targeted by the prototype steal event.
+- [x] Prototype down/respawn flow preserves safe stash and drops carried loot.
+- [x] Respawn returns the player to the safe spawn with a short 30-second recovery protection period.
+- [x] Manual **Test down / respawn** control exists for prototype QA.
+
 ### Realtime prototype
 - [x] Supabase Realtime Presence population display.
 - [x] Supabase Broadcast movement prototype.
-- [x] Protected state can be advertised in movement payloads.
+- [x] Protected/carried/alive state is advertised in movement payloads.
+- [x] Prototype steal events are broadcast to the target.
 - [x] Invite/copy-room-link.
 
 ### Portal / QA
@@ -62,19 +72,21 @@ Target server size: **100 concurrent players**. A player can enter with 1 player
 - Instant entry and late-join world flow.
 - Movement and mobile controls.
 - Resource collection and local carried/safe-stash prototype loop.
-- Newcomer protection timer in the browser prototype.
-- Realtime presence/basic movement where Supabase is configured.
+- Prototype steal/risk/recovery loop.
+- Newcomer protection and respawn recovery timers in the browser prototype.
+- Realtime presence/basic movement/steal event transport where Supabase is configured.
 - 100-player target UI.
 
 ## Important known limitations — do not mistake these for completed features
 1. **Not production-grade 100-player multiplayer.** Presence/Broadcast is prototype transport, not authoritative simulation.
-2. **Collection and safe stash are client-side prototype state.** They are not persistent or cheat-resistant yet.
-3. **Stealing/combat is not implemented.** Do not claim kills, theft or risk states are live.
+2. **Collection, safe stash and theft are client-side prototype state.** They are not persistent or cheat-resistant yet.
+3. **Stealing is prototype-only; combat, damage and real kills are not implemented.**
 4. **100 players is a target, not load-tested capacity.**
 5. **Two-client multiplayer sync was not independently verified in the latest QA pass.**
 6. **Resource state is not shared authoritatively between players yet**, so two clients can currently collect their own local copy.
-7. **Avatars are prototype geometry.** Customisation/cosmetics are future work.
-8. **Reconnect persistence/server migration are unfinished.**
+7. **Remote-player theft is trust-based prototype messaging** and must not be treated as secure gameplay.
+8. **Avatars are prototype geometry.** Customisation/cosmetics are future work.
+9. **Reconnect persistence/server migration are unfinished.**
 
 ## Architecture direction
 ### Phase 1 — prototype
@@ -96,12 +108,12 @@ Central safe city/arrival → forest → abandoned factory → mountain → unde
 These remain design targets until authoritative gameplay exists.
 
 ## Next highest-priority implementation order
-1. **Safe non-destructive steal interaction** with risk/reward feedback.
-2. **Respawn/recovery** and Safe/Carried/Vault split.
-3. **Large-world region layout.**
-4. **Authoritative server-side combat/loot/protection/capacity.**
-5. **100-player load testing + spatial interest management.**
-6. **Original TargetBud avatar system + later customisation.**
+1. **Large-world region layout** with safe city, forest, factory, mountain and underground paths.
+2. **Authoritative server-side combat/loot/protection/capacity.**
+3. **100-player load testing + spatial interest management.**
+4. **Real death/combat interactions and balanced steal rules.**
+5. **Original TargetBud avatar system + later customisation.**
+6. **Vault/extraction progression and persistent inventory.**
 7. **Progression, missions, social systems and retention loops.**
 
 ## Agent guardrails
