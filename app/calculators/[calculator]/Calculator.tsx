@@ -5,19 +5,18 @@ const money = (n:number) => new Intl.NumberFormat("en-IN",{style:"currency",curr
 const num = (v:string) => Math.max(0, Number(v) || 0);
 
 export default function Calculator({kind}:{kind:string}) {
-  const [principal,setPrincipal]=useState(kind==="sip"?5000:kind==="simple"||kind==="compound"?100000:kind==="fd"?100000:kind==="rd"?5000:3000000);
+  const [principal,setPrincipal]=useState(kind==="sip"||kind==="rd"?5000:kind==="simple"||kind==="compound"?100000:kind==="fd"?100000:3000000);
   const [rate,setRate]=useState(kind==="emi"?8.5:kind==="sip"?12:7);
   const [years,setYears]=useState(kind==="emi"?20:5);
   const [frequency,setFrequency]=useState(12);
-  const [months,setMonths]=useState(60);
   const result=useMemo(()=>{
     if(kind==="emi") { const n=years*12, r=rate/1200, emi=r===0?principal/n:principal*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1); return {primary:emi,label:"Estimated monthly EMI",items:[["Principal",money(principal)],["Total interest",money(emi*n-principal)],["Total repayment",money(emi*n)],["Tenure",`${n} months`]]}; }
     if(kind==="sip") { const n=years*12,r=Math.pow(1+rate/100,1/12)-1,fv=r===0?principal*n:principal*((Math.pow(1+r,n)-1)/r)*(1+r); return {primary:fv,label:"Estimated future value",items:[["Invested",money(principal*n)],["Estimated gain",money(fv-principal*n)],["Duration",`${n} months`]]}; }
     if(kind==="fd") { const n=years*frequency, a=principal*Math.pow(1+rate/(100*frequency),n); return {primary:a,label:"Estimated maturity",items:[["Deposit",money(principal)],["Interest",money(a-principal)],["Tenure",`${years} years`]]}; }
-    if(kind==="rd") { const r=rate/400,n=years*4,a=principal*((Math.pow(1+r,n)-1)/r)*(1+r); return {primary:a,label:"Estimated maturity",items:[["Monthly deposit",money(principal)],["Total deposits",money(principal*months)],["Interest",money(a-principal*n/4*3)]]}; }
+    if(kind==="rd") { const n=years*12,r=rate/1200,a=r===0?principal*n:principal*((Math.pow(1+r,n)-1)/r)*(1+r); return {primary:a,label:"Estimated maturity",items:[["Monthly deposit",money(principal)],["Total deposits",money(principal*n)],["Interest",money(a-principal*n)]]}; }
     if(kind==="simple") { const interest=principal*rate*years/100; return {primary:principal+interest,label:"Maturity amount",items:[["Principal",money(principal)],["Interest",money(interest)],["Rate",`${rate}% p.a.`]]}; }
     const n=years*frequency,a=principal*Math.pow(1+rate/(100*frequency),n); return {primary:a,label:"Maturity amount",items:[["Principal",money(principal)],["Compound interest",money(a-principal)],["Compounds",`${n}`]]};
-  },[kind,principal,rate,years,frequency,months]);
+  },[kind,principal,rate,years,frequency]);
   const label=kind==="sip"||kind==="rd"?"Monthly amount":"Principal / deposit";
   return <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
     <section className="rounded-2xl border border-black/10 p-5 sm:p-6"><h2 className="text-base font-black">Enter assumptions</h2><div className="mt-5 grid gap-4 sm:grid-cols-2">
