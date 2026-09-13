@@ -28,40 +28,35 @@ Target server size: **100 concurrent players**. A player can enter with 1 player
 - [x] Instant entry; no minimum-player wait.
 - [x] Shared room URLs and display-name handoff.
 - [x] Late joiners can enter the same room.
+- [x] Lobby now enters the connected world route.
 
 ### 3D prototype
 - [x] Babylon.js 3D engine.
-- [x] Stylized island, lower platform, towers, energy ring and protected spawn pad.
+- [x] Connected large-world prototype spanning five named regions.
+- [x] Arrival City safe zone.
+- [x] Whisper Forest, Iron Factory, Storm Mountain and Underground regions.
+- [x] Bridges connecting regions into one explorable space.
+- [x] Region detection and live region HUD.
+- [x] World map overlay.
 - [x] Original simple capsule/head avatar.
 - [x] WASD/arrows + mobile touch movement.
 - [x] Third-person camera.
 - [x] Basic remote-player rendering.
-- [x] Visible newcomer protection timer.
-- [x] Protected arrival area visually distinguished.
 
-### Playable resource loop
-- [x] Resource nodes exist in the world: crystals, scrap and relics.
-- [x] Nearby resources can be collected with **E**.
-- [x] Carried inventory has a prototype capacity of 10 units.
-- [x] HUD shows carried loot and collection feedback.
-- [x] A prototype **Secure loot** action moves carried loot into a local safe stash.
-- [x] Collection nodes disappear after collection during the current play session.
-
-### Steal / recovery prototype
-- [x] Nearby unprotected remote players can be selected as steal targets.
-- [x] **Q / mobile STEAL** performs a limited, non-destructive prototype theft of up to 3 carried units.
-- [x] Stealing raises the local prototype risk state to **Wanted** and has a cooldown.
-- [x] Protected players cannot initiate theft and cannot be targeted by the prototype steal event.
-- [x] Prototype down/respawn flow preserves safe stash and drops carried loot.
-- [x] Respawn returns the player to the safe spawn with a short 30-second recovery protection period.
-- [x] Manual **Test down / respawn** control exists for prototype QA.
+### Playable resource / survival prototype
+- [x] Resource nodes: crystals, scrap and relics.
+- [x] E to collect and carried capacity of 10.
+- [x] Secure loot local safe stash.
+- [x] Q/mobile steal prototype and Wanted feedback.
+- [x] Down/respawn prototype with safe-stash preservation and carried-loot loss.
+- [x] Short recovery protection after respawn.
 
 ### Realtime prototype
 - [x] Supabase Realtime Presence population display.
 - [x] Supabase Broadcast movement prototype.
-- [x] Protected/carried/alive state is advertised in movement payloads.
-- [x] Prototype steal events are broadcast to the target.
-- [x] Invite/copy-room-link.
+- [x] Protected/carried/alive state transport in the gameplay prototype.
+- [x] Prototype steal event transport.
+- [x] Room invite/copy flow.
 
 ### Portal / QA
 - [x] Games hub integration.
@@ -69,22 +64,20 @@ Target server size: **100 concurrent players**. A player can enter with 1 player
 - [x] Previous smoke testing confirmed 3D render, movement, invite flow, responsive layout and no horizontal overflow.
 
 ## Currently working
-- Instant entry and late-join world flow.
-- Movement and mobile controls.
-- Resource collection and local carried/safe-stash prototype loop.
-- Prototype steal/risk/recovery loop.
-- Newcomer protection and respawn recovery timers in the browser prototype.
-- Realtime presence/basic movement/steal event transport where Supabase is configured.
+- Large-world prototype and connected region traversal.
+- Instant entry/late join and mobile movement.
+- Resource/steal/recovery gameplay prototype.
+- Realtime prototype transport where Supabase is configured.
 - 100-player target UI.
 
 ## Important known limitations — do not mistake these for completed features
 1. **Not production-grade 100-player multiplayer.** Presence/Broadcast is prototype transport, not authoritative simulation.
-2. **Collection, safe stash and theft are client-side prototype state.** They are not persistent or cheat-resistant yet.
-3. **Stealing is prototype-only; combat, damage and real kills are not implemented.**
+2. **Collection, safe stash and theft remain client-side prototype state.** They are not persistent or cheat-resistant.
+3. **Combat, damage and secure server-side kills are not implemented.**
 4. **100 players is a target, not load-tested capacity.**
-5. **Two-client multiplayer sync was not independently verified in the latest QA pass.**
-6. **Resource state is not shared authoritatively between players yet**, so two clients can currently collect their own local copy.
-7. **Remote-player theft is trust-based prototype messaging** and must not be treated as secure gameplay.
+5. **Two-client multiplayer sync has not been independently verified in the latest QA pass.**
+6. **World/resource state is not authoritative or globally synchronized yet.**
+7. **Remote-player theft remains trust-based prototype messaging.**
 8. **Avatars are prototype geometry.** Customisation/cosmetics are future work.
 9. **Reconnect persistence/server migration are unfinished.**
 
@@ -99,6 +92,8 @@ Spatial/interest management so clients prioritize nearby/visible players rather 
 ## World design target
 Central safe city/arrival → forest → abandoned factory → mountain → underground → ruins → treasure zones → high-risk zones → hidden passages → extraction/vault locations.
 
+Current prototype covers the first five major regions; ruins, treasure/high-risk subzones, hidden passages and extraction/vault gameplay remain future layers.
+
 ## Protection / risk design target
 - **Newcomer:** ~5 min protection, cannot be killed/stolen from, cannot damage others, protected spawn, hidden from target highlighting; attack/steal ends protection early.
 - **Survivor:** normal risk.
@@ -108,18 +103,17 @@ Central safe city/arrival → forest → abandoned factory → mountain → unde
 These remain design targets until authoritative gameplay exists.
 
 ## Next highest-priority implementation order
-1. **Large-world region layout** with safe city, forest, factory, mountain and underground paths.
-2. **Authoritative server-side combat/loot/protection/capacity.**
-3. **100-player load testing + spatial interest management.**
-4. **Real death/combat interactions and balanced steal rules.**
-5. **Original TargetBud avatar system + later customisation.**
-6. **Vault/extraction progression and persistent inventory.**
-7. **Progression, missions, social systems and retention loops.**
+1. **Authoritative server-side game state** for admission, movement, loot, stealing, protection and capacity.
+2. **100-player load testing + spatial interest management.**
+3. **Real combat/damage/death and balanced steal rules.**
+4. **Extraction/vault system and persistent inventory.**
+5. **Original TargetBud avatar system + customisation.**
+6. **Progression, missions, social systems and retention loops.**
 
 ## Agent guardrails
 - Read this file first.
-- Do not rebuild completed lobby, room, Babylon world, movement, invite, games-hub or sitemap work unless regression is proven.
-- Do not treat UI as proof that gameplay is implemented.
+- Do not rebuild completed lobby, room, movement, invite, games-hub or sitemap work unless regression is proven.
+- Do not treat UI as proof gameplay exists.
 - Update this file after every meaningful gameplay change with Implemented, Currently working, Known limitations and Next priority.
 - Prefer small testable increments.
 - Keep existing Vercel primary deployment; keep Netlify as-is.
