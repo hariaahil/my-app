@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import SkyfallArena from "./SkyfallArena";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Skyfall Arena",
-  description: "A fast, social 3D multiplayer arena built for TargetBud. Join a room, explore the island and outlast the crowd.",
-  alternates: { canonical: "/games/skyfall-arena" },
-  openGraph: { title: "Skyfall Arena | TargetBud", description: "A fast, social 3D multiplayer arena built for TargetBud.", url: "/games/skyfall-arena" },
+  description: "A fast, social 3D multiplayer arena built for TargetBud. Join the shared lobby before entering the island.",
+  alternates: { canonical: "/games/skyfall-arena/lobby" },
+  openGraph: { title: "Skyfall Arena | TargetBud", description: "Join the Skyfall Arena lobby and enter the shared 3D multiplayer island.", url: "/games/skyfall-arena/lobby" },
 };
 
 export default function SkyfallArenaPage() {
-  return <SkyfallArena />;
+  redirect("/games/skyfall-arena/lobby");
 }
