@@ -15,12 +15,13 @@ Target server size: **100 concurrent players**. A player can enter with 1 player
 ## Current product rules (locked direction)
 
 - No minimum-player wait.
-- The world is the lobby: players spawn into the world immediately.
+- The world is the lobby: players spawn into the world immediately after the entry screen.
 - Maximum target: 100 players per server.
 - Late joining is first-class gameplay.
-- New players get a temporary protected newcomer state (target: 5 minutes).
-- Newcomer protection ends early if the player attacks or steals, preventing abuse.
-- Protected players cannot be killed or have valuable loot stolen while protected.
+- New players get a temporary protected newcomer state (5 minutes in the prototype).
+- Protection is visible and expires automatically in the prototype.
+- Future authoritative rule: protection ends early if the player attacks or steals.
+- Future authoritative rule: protected players cannot be killed or have valuable loot stolen.
 - Safe spawn / arrival area is protected.
 - Death should be recoverable, not a permanent reset.
 - Future inventory model: Safe inventory, Carried loot, Rare loot, Vault.
@@ -33,10 +34,11 @@ Target server size: **100 concurrent players**. A player can enter with 1 player
 
 ### World / entry
 - [x] Skyfall Arena exists at `/games/skyfall-arena`.
-- [x] A multiplayer entry/arrival page exists at `/games/skyfall-arena/lobby`.
+- [x] Multiplayer entry page exists at `/games/skyfall-arena/lobby`.
+- [x] Entry does **not** require a minimum player count; it can enter with one player.
 - [x] Room codes can be shared through URLs.
-- [x] Display name is persisted locally and passed into the game.
-- [x] The current entry flow is being changed from a traditional waiting lobby to an instant-entry world arrival flow.
+- [x] Display name is persisted locally and passed into the game URL.
+- [x] The game now treats the world as the persistent play space; late joiners can use the same room.
 
 ### 3D prototype
 - [x] Babylon.js browser 3D engine loads from CDN.
@@ -46,12 +48,17 @@ Target server size: **100 concurrent players**. A player can enter with 1 player
 - [x] Mobile touch movement exists.
 - [x] Third-person-follow camera exists.
 - [x] Basic remote-player rendering exists.
+- [x] Protected newcomer spawn pad is visually distinguished.
+- [x] Newcomer protection timer is visible in the game HUD for ~5 minutes.
+- [x] Player state visibly changes from `Newcomer · protected` to `Survivor · normal risk` when the prototype timer expires.
+- [x] Remote players can advertise the prototype protected state through movement payloads.
 
 ### Realtime prototype
 - [x] Supabase Realtime Presence is used for room population.
 - [x] Supabase Broadcast syncs basic movement between clients.
 - [x] Room-based multiplayer channel exists.
 - [x] Invite/copy-room-link exists.
+- [x] UI shows a 100-player target/capacity indicator.
 
 ### Portal integration / QA already completed
 - [x] Games hub links to Skyfall Arena.
@@ -61,6 +68,7 @@ Target server size: **100 concurrent players**. A player can enter with 1 player
 
 ## Currently working
 
+- Player can enter immediately instead of waiting for a full lobby.
 - 3D world loads in the browser.
 - Player can move around the island.
 - Mobile controls are available.
@@ -68,17 +76,19 @@ Target server size: **100 concurrent players**. A player can enter with 1 player
 - Player population is displayed.
 - Friends can be invited with a room link.
 - Supabase-configured environments can show realtime presence and basic movement sync.
+- A newcomer receives visible temporary protection in the current prototype.
 - The code/UI is designed around a 100-player target, but **100 concurrent players has NOT been independently load-tested**.
 
 ## Important known limitations — do not mistake these for completed features
 
 1. **Not a production-grade 100-player server yet.** Supabase Presence/Broadcast is currently a prototype transport. It is not an authoritative game server and is not sufficient by itself for secure combat, stealing, inventory or capacity enforcement.
-2. **Combat/stealing is not implemented yet.** Do not describe kills, loot theft, inventory, wanted status, or protection as live gameplay until implemented and tested.
-3. **Newcomer protection is a product rule, not yet a fully authoritative server rule.** Client-only protection is not secure enough for competitive gameplay.
+2. **Combat/stealing is not implemented yet.** Do not describe kills, loot theft, inventory, wanted status, or protection as secure live gameplay.
+3. **Newcomer protection is currently client-side prototype state.** It is intentionally not treated as a secure competitive rule.
 4. **100-player capacity is a target, not a verified result.** UI capacity must not be treated as proof of 100-player scalability.
-5. **Two-client multiplayer sync was not independently verified end-to-end in the latest QA pass.** Re-test before claiming it is production verified.
+5. **Two-client multiplayer sync was not independently verified end-to-end in the latest QA pass.** Re-test before claiming production multiplayer verification.
 6. **Avatars are prototype geometry only.** Customisation, cosmetics, emotes and persistent appearance are future work.
 7. **World persistence / reconnect state / server migration are not finished.**
+8. **The lobby copy is still visually framed as an entry screen.** This is intentional; it is not a waiting room. The button can enter immediately when the room is not full.
 
 ## Architecture direction
 
@@ -141,15 +151,14 @@ These are design targets until authoritative gameplay is implemented.
 
 ## Next highest-priority implementation order
 
-1. **Convert lobby into instant-entry arrival zone** — no waiting threshold.
-2. **Pass/persist player identity cleanly into the world.**
-3. **Implement visible newcomer protection timer + protected spawn zone in the prototype.**
-4. **Create world regions and safer spawn/arrival area.**
-5. **Implement collectible resources and a basic inventory model.**
-6. **Implement first safe steal interaction and risk-state feedback.**
-7. **Move combat/loot/protection/capacity authority server-side.**
-8. **Load-test toward 100 players and add spatial interest management.**
-9. **Build original TargetBud avatar system and later customisation.**
+1. **Create the first playable resource loop:** collectible resource nodes + simple carried inventory.
+2. **Add a safe, non-destructive steal interaction** with clear risk/reward feedback.
+3. **Add respawn/recovery** and establish the Safe/Carried/Vault inventory split.
+4. **Build the large-world region layout** around the current island prototype.
+5. **Move combat/loot/protection/capacity authority server-side.**
+6. **Load-test toward 100 players** and add spatial interest management.
+7. **Build original TargetBud avatar system** and later customisation.
+8. **Add progression, missions, social systems and retention loops.**
 
 ## Agent guardrails
 
