@@ -36,9 +36,12 @@ Target server size: **100 concurrent players**. A player can enter with 1 player
 - [x] Whisper Forest, Iron Factory, Storm Mountain and Underground regions.
 - [x] Bridges connecting regions.
 - [x] Region detection and live region HUD.
-- [x] Original simple capsule/head avatar.
-- [x] WASD/arrows + mobile touch movement.
-- [x] Third-person camera.
+- [x] Original TargetBud-style prototype humanoid avatar with body, head and legs.
+- [x] Third-person camera with close behind-player framing.
+- [x] WASD/arrows + persistent joystick movement at all responsive breakpoints.
+- [x] Persistent jump control at all responsive breakpoints.
+- [x] Right-side drag camera-look interaction without joystick/control conflicts.
+- [x] Other players rendered as distinct realtime prototype avatars.
 
 ### Realtime prototype
 - [x] Supabase Realtime Presence population display.
@@ -48,25 +51,27 @@ Target server size: **100 concurrent players**. A player can enter with 1 player
 ### Portal / QA
 - [x] Games hub integration.
 - [x] Sitemap integration.
-- [x] Existing portal smoke tests previously passed for the broader games/calculator areas.
-- [x] Found and fixed a stale `SkyfallArena.tsx` typecheck failure that blocked production builds; it now re-exports the active world component.
+- [x] Production lobby → world transition verified.
+- [x] Production 3D canvas rendering verified.
+- [x] Production desktop joystick and jump controls visually verified.
+- [x] Production third-person mode verified.
+- [x] Latest production deployment is READY on Vercel.
 
 ## Currently working
 - Connected five-region world prototype.
-- Instant entry/late join and mobile movement.
+- Instant entry/late join and responsive joystick/jump controls.
+- Third-person avatar/camera presentation.
 - Realtime population/movement prototype where Supabase is configured.
-- Production deployment is rebuilding from the latest typecheck fix.
 
 ## Important known limitations
 1. **Not production-grade 100-player multiplayer.** Presence/Broadcast is prototype transport, not authoritative simulation.
-2. **Current `/world` route is a connected-world prototype only.** The richer collect/steal/recovery prototype exists in the legacy component but is not the active routed world.
+2. **Current `/world` route is a connected-world prototype only.** The richer collect/steal/recovery prototype is not yet part of the active routed world.
 3. **World resources, inventory, combat, stealing and death are not authoritative/persistent.**
 4. **100 players is a target, not load-tested capacity.**
 5. **Two-client multiplayer sync has not been independently verified in the latest QA pass.**
-6. **The latest browser QA run timed out while repeatedly attempting the lobby → world transition; do not treat that run as a pass.**
-7. **The active world currently does not expose the earlier world-map overlay or remote-player rendering UI; these need to be reintroduced deliberately after the production build is stable.**
+6. **Mobile/tablet interaction needs repeated production regression passes at multiple viewport sizes.**
+7. **Avatars are still prototype geometry and need the full original TargetBud avatar/customisation system later.**
 8. **Reconnect persistence/server migration are unfinished.**
-9. **Avatars are prototype geometry.**
 
 ## Architecture direction
 ### Phase 1 — prototype
@@ -88,8 +93,8 @@ Central safe city/arrival → forest → abandoned factory → mountain → unde
 These remain design targets until authoritative gameplay exists.
 
 ## Next highest-priority implementation order
-1. **Get production build green and verify the lobby → world transition on desktop/mobile.**
-2. **Reintroduce the world map and remote-player rendering cleanly in the active world route.**
+1. **Complete responsive production QA across mobile, tablet and desktop, including avatar visibility after the world finishes loading.**
+2. **Reintroduce the world map and strengthen remote-player/name presentation cleanly in the active world route.**
 3. **Move admission, movement, loot, stealing, protection and capacity to authoritative server-side state.**
 4. **100-player load testing + spatial interest management.**
 5. **Real combat/damage/death with balanced newcomer protection and steal rules.**
