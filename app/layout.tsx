@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body><SiteNavigation />{children}<GoalInsightsOverlay /><GoalInsightsRedirect /></body>
+      <body><SiteNavigation /><a href="#main-content" className="tb-skip-link">Skip to main content</a><div id="main-content">{children}</div><GoalInsightsOverlay /><GoalInsightsRedirect /></body>
     </html>
   );
 }
