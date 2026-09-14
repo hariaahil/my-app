@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowUpRight, BarChart3, BookOpen, Code2, Compass, Gamepad2, MessageCircle, Newspaper, Search, Trophy, Users, WalletCards } from "lucide-react";
+import { ArrowUpRight, BarChart3, BookOpen, Calculator, Code2, Compass, Gamepad2, MessageCircle, Newspaper, Search, Trophy, Users, WalletCards } from "lucide-react";
 import AuthButton from "@/components/auth-button";
+
+export const metadata: Metadata = {
+  title: "TargetBud — Tools, Calculators, Markets, News & More",
+  description: "TargetBud is a practical internet workspace for free online tools, calculators, market information, news, sports, games and personal workspaces.",
+  alternates: { canonical: "https://targetbud.vercel.app/" },
+};
 
 const workspaces = [
   { name: "Finance", description: "Goals, wallet, investments, income, expenses and insights.", icon: WalletCards, href: "/goal" },
@@ -8,6 +15,8 @@ const workspaces = [
   { name: "News", description: "India, world, business, technology, finance and more.", icon: Newspaper, href: "/news" },
   { name: "Sports", description: "Scores, fixtures, standings and conversations around the games.", icon: Trophy, href: "/sports" },
   { name: "Developer Tools", description: "A focused workspace for JSON, encoding, JWT, UUID, web and API utilities.", icon: Code2, href: "/tools" },
+  { name: "Calculators", description: "Practical calculators for loans, money and everyday decisions.", icon: Calculator, href: "/calculators" },
+  { name: "Games", description: "Play original TargetBud games and social experiences.", icon: Gamepad2, href: "/games" },
   { name: "Journal", description: "Original TargetBud editorial content across technology, markets and sports.", icon: BookOpen, href: "/blog" },
 ];
 
@@ -26,7 +35,7 @@ export default function Home() {
             <div>
               <p className="mb-4 text-[11px] font-bold uppercase tracking-[.2em] text-black/45">Your internet workspace</p>
               <h1 className="max-w-4xl text-4xl font-semibold tracking-[-.045em] sm:text-6xl lg:text-7xl">Do more. Stay informed. Find your people.</h1>
-              <p className="mt-6 max-w-2xl text-base leading-7 text-black/60 sm:text-lg">TargetBud brings useful tools, live information, personal workspaces and interest-based connections into one calm, consistent platform.</p>
+              <p className="mt-6 max-w-2xl text-base leading-7 text-black/60 sm:text-lg">TargetBud brings useful tools, calculators, live information, personal workspaces and interest-based connections into one calm, consistent platform.</p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link href="/discover" className="inline-flex items-center gap-2 rounded-xl bg-black px-5 py-3 text-sm font-bold text-white hover:bg-black/85">Explore TargetBud <ArrowUpRight size={16} /></Link>
                 <Link href="/tools" className="inline-flex items-center gap-2 rounded-xl border border-black/15 px-5 py-3 text-sm font-bold hover:bg-black/[.04]"><Search size={16} /> Find a tool</Link>
@@ -35,7 +44,7 @@ export default function Home() {
             <div className="rounded-2xl border border-black/10 bg-black/[.025] p-5 sm:p-6">
               <p className="text-xs font-bold uppercase tracking-[.16em] text-black/45">Built around you</p>
               <div className="mt-5 space-y-4 text-sm">
-                <div className="flex gap-3"><span className="mt-1 size-2 shrink-0 rounded-full bg-black" /><span><b>Useful without an account.</b><br /><span className="text-black/55">Explore public tools, information and content first.</span></span></div>
+                <div className="flex gap-3"><span className="mt-1 size-2 shrink-0 rounded-full bg-black" /><span><b>Useful without an account.</b><br /><span className="text-black/55">Explore public tools, calculators, information and content first.</span></span></div>
                 <div className="flex gap-3"><span className="mt-1 size-2 shrink-0 rounded-full bg-black" /><span><b>Personal when you sign in.</b><br /><span className="text-black/55">Goals, wallet, watchlists, saves and activity stay yours.</span></span></div>
                 <div className="flex gap-3"><span className="mt-1 size-2 shrink-0 rounded-full bg-black" /><span><b>Social by interest.</b><br /><span className="text-black/55">Follow topics, people and communities—not just accounts.</span></span></div>
               </div>
@@ -46,7 +55,7 @@ export default function Home() {
 
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="mb-5 flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-black/45">Workspaces</p><h2 className="mt-1 text-2xl font-semibold tracking-tight">Everything in one system</h2></div><Link href="/discover" className="hidden text-sm font-bold text-black/55 hover:text-black sm:block">Explore all →</Link></div>
-        <div className="grid gap-px overflow-hidden rounded-2xl border border-black/10 bg-black/10 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-px overflow-hidden rounded-2xl border border-black/10 bg-black/10 sm:grid-cols-2 lg:grid-cols-4">
           {workspaces.map(({ name, description, icon: Icon, href }) => <Link key={name} href={href} className="group bg-white p-5 transition hover:bg-black/[.025] sm:p-6"><div className="flex items-start justify-between"><div className="grid size-9 place-items-center rounded-lg bg-black text-white"><Icon size={17} /></div><ArrowUpRight size={16} className="text-black/25 transition group-hover:text-black" /></div><h3 className="mt-8 text-base font-bold">{name}</h3><p className="mt-2 text-sm leading-6 text-black/55">{description}</p></Link>)}
         </div>
       </section>
