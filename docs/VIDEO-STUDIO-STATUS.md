@@ -20,18 +20,20 @@ Video Studio is the current top product-building priority: a browser-first, orig
 - Browser-native export chooses MP4 only when the current browser exposes a supported MP4 encoder; otherwise it returns WebM with an explicit message.
 - Browser composition now creates an audio MediaStream destination and mixes audio-bearing video/audio clips into the recorded project.
 - Audio clips are synchronized to their project segment and use short automatic fade-in/fade-out ramps to reduce boundary clicks.
+- Independent multi-track domain model for video, overlay and audio placement, with per-clip audio mix settings and safe fade/gain calculations.
+- Automated unit coverage for cross-track placement, track normalization and audio mix/fade behavior.
 - Accessible labels for key controls and responsive desktop/mobile layout.
 - Metadata probing for imported audio/video duration.
 
 ## Not yet production-complete
+- UI exposure for independent multi-track lanes and user-configurable per-clip audio fades/mix levels.
 - Reliable cross-browser MP4 export independent of browser codec support.
-- User-configurable audio mixing/fade controls and simultaneous independent multi-track playback.
 - Transitions, filters, crop/position controls and caption editor.
 - AI captions, voiceover, templates, article/news-to-short workflow, image-to-video.
 - Supabase saved projects/cloud storage and creator monetisation.
 
 ## Next implementation order
-1. Expose genuine multi-track lanes in the editor UI with independent video/image/audio placement and user-configurable audio fades/mix levels.
+1. Wire the multi-track model into the editor UI: visible video/overlay/audio lanes, clip placement, lane targeting, and independent volume/fade controls.
 2. Add lazy-loaded FFmpeg/WASM or a suitable processing pipeline for reliable MP4 export without bloating the initial route bundle.
 3. Add captions, transitions, crop and basic filters.
 4. Add templates and TargetBud News/Journal -> short-video handoff.
