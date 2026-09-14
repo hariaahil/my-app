@@ -10,6 +10,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: siteUrl, lastModified: now, changeFrequency: "daily", priority: 1 },
     { url: `${siteUrl}/tools`, lastModified: now, changeFrequency: "weekly", priority: 0.95 },
     { url: `${siteUrl}/calculators`, lastModified: now, changeFrequency: "weekly", priority: 0.95 },
+    { url: `${siteUrl}/news`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
+    { url: `${siteUrl}/blog`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
     { url: `${siteUrl}/games`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     { url: `${siteUrl}/games/skyfall-arena/lobby`, lastModified: now, changeFrequency: "weekly", priority: 0.85 },
     ...calculatorSlugs.map((slug) => ({ url: `${siteUrl}/calculators/${slug}`, lastModified: now, changeFrequency: "monthly" as const, priority: 0.9 })),
