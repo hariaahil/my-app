@@ -24,17 +24,18 @@ Video Studio is the current top product-building priority: a browser-first, orig
 - Automated unit coverage for cross-track placement, track normalization and audio mix/fade behavior.
 - Accessible labels for key controls and responsive desktop/mobile layout.
 - Metadata probing for imported audio/video duration.
+- Lazy browser-only FFmpeg/WASM loader foundation; the heavy encoder is excluded from the initial editor bundle and loaded only when a rendered export path invokes it.
 
 ## Not yet production-complete
 - UI exposure for independent multi-track lanes and user-configurable per-clip audio fades/mix levels.
-- Reliable cross-browser MP4 export independent of browser codec support.
+- Wiring the lazy FFmpeg loader into the final MP4 render command and validating browser memory/performance limits.
 - Transitions, filters, crop/position controls and caption editor.
 - AI captions, voiceover, templates, article/news-to-short workflow, image-to-video.
 - Supabase saved projects/cloud storage and creator monetisation.
 
 ## Next implementation order
 1. Wire the multi-track model into the editor UI: visible video/overlay/audio lanes, clip placement, lane targeting, and independent volume/fade controls.
-2. Add lazy-loaded FFmpeg/WASM or a suitable processing pipeline for reliable MP4 export without bloating the initial route bundle.
+2. Use the lazy FFmpeg/WASM loader for a reliable MP4 render pipeline without bloating the initial route bundle; keep MediaRecorder as the fallback.
 3. Add captions, transitions, crop and basic filters.
 4. Add templates and TargetBud News/Journal -> short-video handoff.
 5. Add optional authenticated project persistence in Supabase.
