@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compositionDimensions, compositionDuration, compositionTimeAt, clipLength, type CompositionClip } from "./browser-compositor";
+import { audioFadeGain, compositionDimensions, compositionDuration, compositionTimeAt, clipLength, type CompositionClip } from "./browser-compositor";
 
 const clips: CompositionClip[] = [
   { id: "a", name: "a.mp4", url: "blob:a", type: "video", duration: 10, trimStart: 2, trimEnd: 7 },
@@ -23,5 +23,13 @@ describe("browser composition model", () => {
     expect(compositionDimensions["9:16"]).toEqual({ width: 720, height: 1280 });
     expect(compositionDimensions["16:9"]).toEqual({ width: 1280, height: 720 });
     expect(compositionDimensions["1:1"]).toEqual({ width: 1080, height: 1080 });
+  });
+
+  it("ramps audio in and out at clip boundaries", () => {
+    expect(audioFadeGain(0, 5)).toBe(0);
+    expect(audioFadeGain(0.075, 5)).toBeCloseTo(0.5);
+    expect(audioFadeGain(1, 5)).toBe(1);
+    expect(audioFadeGain(4.925, 5)).toBeCloseTo(0.5);
+    expect(audioFadeGain(5, 5)).toBe(0);
   });
 });
