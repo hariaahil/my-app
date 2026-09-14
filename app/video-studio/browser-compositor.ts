@@ -20,8 +20,7 @@ export const compositionDimensions: Record<CompositionRatio, { width: number; he
 
 export const clipLength = (clip: CompositionClip) => Math.max(0, clip.trimEnd - clip.trimStart);
 
-export const compositionDuration = (clips: CompositionClip[]) =>
-  clips.reduce((sum, clip) => sum + clipLength(clip), 0);
+export const compositionDuration = (clips: CompositionClip[]) => clips.reduce((sum, clip) => sum + clipLength(clip), 0);
 
 export const compositionTimeAt = (clips: CompositionClip[], time: number) => {
   let cursor = 0;
@@ -106,13 +105,19 @@ export async function exportBrowserComposition({
     ctx.drawImage(source, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
   };
 
+  const videos = media.filter((item): item is HTMLVideoElement => item instanceof HTMLVideoElement);
+  videos.forEach((video) => video.pause());
   const startedAt = performance.now();
+  let previousIndex = -1;
   recorder.start(250);
-  await Promise.all(media.filter((item): item is HTMLVideoElement => item instanceof HTMLVideoElement).map((video) => video.play().catch(() => undefined)));
 
   await new Promise<void>((resolve) => {
     const render = () => {
       const elapsed = (performance.now() - startedAt) / 1000;
+      if (elapsed >= duration) {
+        resolve();
+        return;
+      }
       const position = compositionTimeAt(usable, elapsed);
       if (!position) {
         resolve();
@@ -120,8 +125,14 @@ export async function exportBrowserComposition({
       }
       const index = usable.findIndex((clip) => clip.id === position.clip.id);
       const source = media[index];
+      if (index !== previousIndex) {
+        videos.forEach((video) => video.pause());
+        if (source instanceof HTMLVideoElement) source.play().catch(() => undefined);
+        previousIndex = index;
+      }
       if (source instanceof HTMLVideoElement) {
-        source.currentTime = source.duration ? Math.min(source.duration, source.currentTime) : source.currentTime;
+        const sourceTime = Math.min(source.duration || position.clip.duration, position.clip.trimStart + position.localTime);
+        if (Math.abs(source.currentTime - sourceTime) > 0.08) source.currentTime = sourceTime;
         fit(source, source.videoWidth || width, source.videoHeight || height);
       } else if (source instanceof HTMLImageElement) {
         fit(source, source.naturalWidth || width, source.naturalHeight || height);
@@ -138,13 +149,12 @@ export async function exportBrowserComposition({
         ctx.fillText(text, width / 2, height * 0.38, width - 80);
         ctx.shadowBlur = 0;
       }
-      if (elapsed >= duration) resolve();
-      else requestAnimationFrame(render);
+      requestAnimationFrame(render);
     };
     render();
   });
 
-  media.forEach((item) => item instanceof HTMLVideoElement && item.pause());
+  videos.forEach((video) => video.pause());
   recorder.stop();
   await stopped;
   stream.getTracks().forEach((track) => track.stop());
