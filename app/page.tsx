@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowUpRight, BarChart3, BookOpen, Calculator, Code2, Compass, Gamepad2, MessageCircle, Newspaper, Search, Trophy, Users, WalletCards } from "lucide-react";
+import { ArrowUpRight, BarChart3, BookOpen, Calculator, Code2, Compass, Film, Gamepad2, MessageCircle, Newspaper, Search, Trophy, Users, WalletCards } from "lucide-react";
 import AuthButton from "@/components/auth-button";
 
 export const metadata: Metadata = {
   title: "TargetBud — Tools, Calculators, Markets, News & More",
-  description: "TargetBud is a practical internet workspace for free online tools, calculators, market information, news, sports, games and personal workspaces.",
+  description: "TargetBud is a practical internet workspace for free online tools, calculators, market information, news, sports, games, video creation and personal workspaces.",
   alternates: { canonical: "https://targetbud.vercel.app/" },
 };
 
@@ -16,6 +16,7 @@ const workspaces = [
   { name: "Sports", description: "Scores, fixtures, standings and conversations around the games.", icon: Trophy, href: "/sports" },
   { name: "Developer Tools", description: "A focused workspace for JSON, encoding, JWT, UUID, web and API utilities.", icon: Code2, href: "/tools" },
   { name: "Calculators", description: "Practical calculators for loans, money and everyday decisions.", icon: Calculator, href: "/calculators" },
+  { name: "Video Studio", description: "Create browser-based videos with media, timeline edits, text and social aspect ratios.", icon: Film, href: "/video-studio" },
   { name: "Games", description: "Play original TargetBud games and social experiences.", icon: Gamepad2, href: "/games" },
   { name: "Journal", description: "Original TargetBud editorial content across technology, markets and sports.", icon: BookOpen, href: "/blog" },
 ];
@@ -35,9 +36,9 @@ export default function Home() {
             <div>
               <p className="mb-4 text-[11px] font-bold uppercase tracking-[.2em] text-black/45">Your internet workspace</p>
               <h1 className="max-w-4xl text-4xl font-semibold tracking-[-.045em] sm:text-6xl lg:text-7xl">Do more. Stay informed. Find your people.</h1>
-              <p className="mt-6 max-w-2xl text-base leading-7 text-black/60 sm:text-lg">TargetBud brings useful tools, calculators, live information, personal workspaces and interest-based connections into one calm, consistent platform.</p>
+              <p className="mt-6 max-w-2xl text-base leading-7 text-black/60 sm:text-lg">TargetBud brings useful tools, calculators, live information, personal workspaces, creative tools and interest-based connections into one calm, consistent platform.</p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link href="/discover" className="inline-flex items-center gap-2 rounded-xl bg-black px-5 py-3 text-sm font-bold text-white hover:bg-black/85">Explore TargetBud <ArrowUpRight size={16} /></Link>
+                <Link href="/video-studio" className="inline-flex items-center gap-2 rounded-xl bg-black px-5 py-3 text-sm font-bold text-white hover:bg-black/85">Create a video <ArrowUpRight size={16} /></Link>
                 <Link href="/tools" className="inline-flex items-center gap-2 rounded-xl border border-black/15 px-5 py-3 text-sm font-bold hover:bg-black/[.04]"><Search size={16} /> Find a tool</Link>
               </div>
             </div>
@@ -46,7 +47,7 @@ export default function Home() {
               <div className="mt-5 space-y-4 text-sm">
                 <div className="flex gap-3"><span className="mt-1 size-2 shrink-0 rounded-full bg-black" /><span><b>Useful without an account.</b><br /><span className="text-black/55">Explore public tools, calculators, information and content first.</span></span></div>
                 <div className="flex gap-3"><span className="mt-1 size-2 shrink-0 rounded-full bg-black" /><span><b>Personal when you sign in.</b><br /><span className="text-black/55">Goals, wallet, watchlists, saves and activity stay yours.</span></span></div>
-                <div className="flex gap-3"><span className="mt-1 size-2 shrink-0 rounded-full bg-black" /><span><b>Social by interest.</b><br /><span className="text-black/55">Follow topics, people and communities—not just accounts.</span></span></div>
+                <div className="flex gap-3"><span className="mt-1 size-2 shrink-0 rounded-full bg-black" /><span><b>Create and share.</b><br /><span className="text-black/55">Make useful media and connect it to TargetBud content.</span></span></div>
               </div>
             </div>
           </div>
@@ -60,16 +61,8 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="border-y border-black/10 bg-black/[.018]">
-        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.16em] text-black/45">Social layer</p><h2 className="mt-1 text-2xl font-semibold tracking-tight">Connect through what you care about</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-black/55">TargetBud is designed to work with zero users and become more valuable as real people, discussions and communities grow.</p></div>
-          <div className="grid gap-3 md:grid-cols-3">
-            {social.map(({ name, description, icon: Icon, href }) => <Link key={name} href={href} className="group rounded-2xl border border-black/10 bg-white p-5 hover:border-black/25"><div className="flex items-center gap-3"><Icon size={18} /><h3 className="font-bold">{name}</h3><ArrowUpRight size={15} className="ml-auto text-black/25 group-hover:text-black" /></div><p className="mt-3 text-sm leading-6 text-black/55">{description}</p></Link>)}
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8"><div className="rounded-2xl bg-black p-6 text-white sm:p-8"><div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-white/50">Start anywhere</p><h2 className="mt-2 text-2xl font-semibold tracking-tight">Search, explore or get something done.</h2></div><Link href="/discover" className="inline-flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-black">Open Discover <ArrowUpRight size={16} /></Link></div></div></section>
+      <section className="border-y border-black/10 bg-black/[.018]"><div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.16em] text-black/45">Social layer</p><h2 className="mt-1 text-2xl font-semibold tracking-tight">Connect through what you care about</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-black/55">TargetBud is designed to work with zero users and become more valuable as real people, discussions and communities grow.</p></div><div className="grid gap-3 md:grid-cols-3">{social.map(({ name, description, icon: Icon, href }) => <Link key={name} href={href} className="group rounded-2xl border border-black/10 bg-white p-5 hover:border-black/25"><div className="flex items-center gap-3"><Icon size={18} /><h3 className="font-bold">{name}</h3><ArrowUpRight size={15} className="ml-auto text-black/25 group-hover:text-black" /></div><p className="mt-3 text-sm leading-6 text-black/55">{description}</p></Link>)}</div></div></section>
+      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8"><div className="rounded-2xl bg-black p-6 text-white sm:p-8"><div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-white/50">Create anything</p><h2 className="mt-2 text-2xl font-semibold tracking-tight">Turn your media into something shareable.</h2></div><Link href="/video-studio" className="inline-flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-black">Open Video Studio <ArrowUpRight size={16} /></Link></div></div></section>
     </main>
   );
 }
