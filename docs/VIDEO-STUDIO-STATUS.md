@@ -18,18 +18,20 @@ Video Studio is the current top product-building priority: a browser-first, orig
 - Browser project composition export using canvas + MediaRecorder where supported.
 - Composition export honors clip order, non-destructive trim ranges, aspect-ratio dimensions and text overlay.
 - Browser-native export chooses MP4 only when the current browser exposes a supported MP4 encoder; otherwise it returns WebM with an explicit message.
+- Browser composition now creates an audio MediaStream destination and mixes audio-bearing video/audio clips into the recorded project.
+- Audio clips are synchronized to their project segment and use short automatic fade-in/fade-out ramps to reduce boundary clicks.
 - Accessible labels for key controls and responsive desktop/mobile layout.
 - Metadata probing for imported audio/video duration.
 
 ## Not yet production-complete
 - Reliable cross-browser MP4 export independent of browser codec support.
-- True multi-track synchronized audio/video compositing and audio mixing/fades.
+- User-configurable audio mixing/fade controls and simultaneous independent multi-track playback.
 - Transitions, filters, crop/position controls and caption editor.
 - AI captions, voiceover, templates, article/news-to-short workflow, image-to-video.
 - Supabase saved projects/cloud storage and creator monetisation.
 
 ## Next implementation order
-1. Upgrade the compositor to genuine multi-track video/image/audio synchronization and audio mixing/fades.
+1. Expose genuine multi-track lanes in the editor UI with independent video/image/audio placement and user-configurable audio fades/mix levels.
 2. Add lazy-loaded FFmpeg/WASM or a suitable processing pipeline for reliable MP4 export without bloating the initial route bundle.
 3. Add captions, transitions, crop and basic filters.
 4. Add templates and TargetBud News/Journal -> short-video handoff.
@@ -39,4 +41,4 @@ Video Studio is the current top product-building priority: a browser-first, orig
 Before any news/blog/editorial insertion, deduplicate against existing content using normalized title, canonical source URL and substantial-body similarity. Only remove existing duplicates after the actual production TargetBud database is positively identified and records are verified; never delete from an unrelated database.
 
 ## Verification note
-The latest feature commits are on `main`. Vercel reports the latest feature commit as `pending` at the time of this run, so production success is not claimed.
+The latest feature commits are on `main`. Production status should be verified from the newest commit before claiming a successful deployment.
