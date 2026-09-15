@@ -1,68 +1,91 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowUpRight, BarChart3, BookOpen, Calculator, Code2, Compass, Film, Gamepad2, MessageCircle, Newspaper, Search, Trophy, Users, WalletCards } from "lucide-react";
+import { ArrowUpRight, BarChart3, Bell, BookOpen, Calculator, Film, Search, Trophy, WalletCards, CloudSun, Coins, Fuel, Newspaper, Bitcoin } from "lucide-react";
 import AuthButton from "@/components/auth-button";
 
 export const metadata: Metadata = {
-  title: "TargetBud — Tools, Calculators, Markets, News & More",
-  description: "TargetBud is a practical internet workspace for free online tools, calculators, market information, news, sports, games, video creation and personal workspaces.",
+  title: "TargetBud Today — Live information, tools, news & markets",
+  description: "Open TargetBud and understand what's happening right now: weather, markets, currency, gold, Bitcoin, sports and current news.",
   alternates: { canonical: "https://targetbud.vercel.app/" },
 };
 
-const workspaces = [
-  { name: "Finance", description: "Goals, wallet, investments, income, expenses and insights.", icon: WalletCards, href: "/goal" },
-  { name: "Markets", description: "Stocks, indices, charts, watchlists and market intelligence.", icon: BarChart3, href: "/markets" },
-  { name: "News", description: "India, world, business, technology, finance and more.", icon: Newspaper, href: "/news" },
-  { name: "Sports", description: "Scores, fixtures, standings and conversations around the games.", icon: Trophy, href: "/sports" },
-  { name: "Developer Tools", description: "A focused workspace for JSON, encoding, JWT, UUID, web and API utilities.", icon: Code2, href: "/tools" },
-  { name: "Calculators", description: "Practical calculators for loans, money and everyday decisions.", icon: Calculator, href: "/calculators" },
-  { name: "Video Studio", description: "Create browser-based videos with media, timeline edits, text and social aspect ratios.", icon: Film, href: "/video-studio" },
-  { name: "Games", description: "Play original TargetBud games and social experiences.", icon: Gamepad2, href: "/games" },
-  { name: "Journal", description: "Original TargetBud editorial content across technology, markets and sports.", icon: BookOpen, href: "/blog" },
-];
+const FALLBACK = "Unavailable right now";
 
-const social = [
-  { name: "Discover", description: "Explore topics, people and communities as the network grows.", icon: Compass, href: "/discover" },
-  { name: "Communities", description: "Find and build focused spaces around shared interests.", icon: Users, href: "/communities" },
-  { name: "Messages", description: "Private conversations and shared TargetBud content.", icon: MessageCircle, href: "/messages" },
-];
+type Snapshot = { label: string; value: string; detail?: string; icon: typeof CloudSun; href: string; live?: boolean };
 
-export default function Home() {
-  return (
-    <main className="min-h-[calc(100vh-56px)] bg-white text-black">
-      <section className="border-b border-black/10">
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
-          <div className="grid gap-10 lg:grid-cols-[1.3fr_.7fr] lg:items-end">
-            <div>
-              <p className="mb-4 text-[11px] font-bold uppercase tracking-[.2em] text-black/45">Your internet workspace</p>
-              <h1 className="max-w-4xl text-4xl font-semibold tracking-[-.045em] sm:text-6xl lg:text-7xl">Do more. Stay informed. Find your people.</h1>
-              <p className="mt-6 max-w-2xl text-base leading-7 text-black/60 sm:text-lg">TargetBud brings useful tools, calculators, live information, personal workspaces, creative tools and interest-based connections into one calm, consistent platform.</p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link href="/video-studio" className="inline-flex items-center gap-2 rounded-xl bg-black px-5 py-3 text-sm font-bold text-white hover:bg-black/85">Create a video <ArrowUpRight size={16} /></Link>
-                <Link href="/tools" className="inline-flex items-center gap-2 rounded-xl border border-black/15 px-5 py-3 text-sm font-bold hover:bg-black/[.04]"><Search size={16} /> Find a tool</Link>
-              </div>
-            </div>
-            <div className="rounded-2xl border border-black/10 bg-black/[.025] p-5 sm:p-6">
-              <p className="text-xs font-bold uppercase tracking-[.16em] text-black/45">Built around you</p>
-              <div className="mt-5 space-y-4 text-sm">
-                <div className="flex gap-3"><span className="mt-1 size-2 shrink-0 rounded-full bg-black" /><span><b>Useful without an account.</b><br /><span className="text-black/55">Explore public tools, calculators, information and content first.</span></span></div>
-                <div className="flex gap-3"><span className="mt-1 size-2 shrink-0 rounded-full bg-black" /><span><b>Personal when you sign in.</b><br /><span className="text-black/55">Goals, wallet, watchlists, saves and activity stay yours.</span></span></div>
-                <div className="flex gap-3"><span className="mt-1 size-2 shrink-0 rounded-full bg-black" /><span><b>Create and share.</b><br /><span className="text-black/55">Make useful media and connect it to TargetBud content.</span></span></div>
-              </div>
-            </div>
-          </div>
+async function getJson(url: string) {
+  try { const r = await fetch(url, { next: { revalidate: 300 } }); return r.ok ? await r.json() : null; } catch { return null; }
+}
+
+async function getSnapshot(): Promise<Snapshot[]> {
+  const [weather, fx, crypto] = await Promise.all([
+    getJson("https://api.open-meteo.com/v1/forecast?latitude=17.3850&longitude=78.4867&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=Asia%2FKolkata"),
+    getJson("https://api.frankfurter.app/latest?from=USD&to=INR"),
+    getJson("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,inr&include_24hr_change=true"),
+  ]);
+  const temp = weather?.current?.temperature_2m;
+  const feels = weather?.current?.apparent_temperature;
+  const inr = fx?.rates?.INR;
+  const btc = crypto?.bitcoin?.inr;
+  const btcChange = crypto?.bitcoin?.inr_24h_change;
+  return [
+    { label: "Weather · Hyderabad", value: temp != null ? `${Math.round(temp)}°C` : FALLBACK, detail: feels != null ? `Feels ${Math.round(feels)}°C` : "Live local forecast", icon: CloudSun, href: "/search?q=Weather%20Hyderabad", live: temp != null },
+    { label: "USD / INR", value: inr != null ? `₹${Number(inr).toFixed(2)}` : FALLBACK, detail: "Latest free FX reference", icon: Coins, href: "/search?q=USD%20INR", live: inr != null },
+    { label: "Bitcoin", value: btc != null ? `₹${Number(btc).toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : FALLBACK, detail: btcChange != null ? `${btcChange >= 0 ? "+" : ""}${btcChange.toFixed(2)}% · 24h` : "Live market reference", icon: Bitcoin, href: "/markets", live: btc != null },
+    { label: "Nifty / Sensex", value: "Open markets", detail: "Live market workspace", icon: BarChart3, href: "/markets" },
+    { label: "Gold", value: "Check live", detail: "Open current market data", icon: Coins, href: "/markets" },
+    { label: "Fuel", value: "Check local", detail: "Availability varies by location", icon: Fuel, href: "/search?q=Hyderabad%20fuel%20price" },
+    { label: "Sports", value: "Live & next", detail: "Scores, fixtures and standings", icon: Trophy, href: "/sports" },
+    { label: "News", value: "Current", detail: "Fresh TargetBud editorial", icon: Newspaper, href: "/news" },
+  ];
+}
+
+async function getTrending() {
+  const data = await getJson("https://news.google.com/rss/search?q=India%20when:1d&hl=en-IN&gl=IN&ceid=IN:en");
+  if (!data) return ["India today", "Technology", "Markets", "Sports", "Weather", "Bitcoin"];
+  return ["India today", "Technology", "Markets", "Sports", "Business", "World news"];
+}
+
+const tools = [
+  ["Finance", "Goals, wallet and money insights.", WalletCards, "/goal"],
+  ["Markets", "Stocks, indices, charts and watchlists.", BarChart3, "/markets"],
+  ["News", "Original current India & world reporting.", Newspaper, "/news"],
+  ["Sports", "Scores, fixtures and standings.", Trophy, "/sports"],
+  ["Calculators", "Loans, money and everyday decisions.", Calculator, "/calculators"],
+  ["Video Studio", "Create and edit browser-based video.", Film, "/video-studio"],
+  ["Journal", "Original explainers and useful articles.", BookOpen, "/blog"],
+] as const;
+
+export default async function Home() {
+  const [snapshot, trending] = await Promise.all([getSnapshot(), getTrending()]);
+  return <main className="min-h-[calc(100vh-56px)] bg-white text-black">
+    <section className="border-b border-black/10">
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+        <div className="mx-auto max-w-4xl text-center">
+          <p className="text-[11px] font-black uppercase tracking-[.24em] text-black/45">TargetBud Today</p>
+          <h1 className="mt-3 text-4xl font-black tracking-[-.05em] sm:text-6xl">Understand what’s happening right now.</h1>
+          <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-black/55">Search anything useful. See live information. Read what matters. Track what you care about.</p>
+          <form action="/search" className="mx-auto mt-7 flex max-w-3xl items-center rounded-2xl border-2 border-black bg-white p-2 shadow-sm">
+            <Search className="ml-2 shrink-0" size={21} />
+            <input name="q" aria-label="Search TargetBud" placeholder="What do you want to know today?  Gold price · Nifty · Weather Hyderabad · Bitcoin" className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm outline-none sm:text-base" />
+            <button className="rounded-xl bg-black px-4 py-3 text-sm font-black text-white">Search</button>
+          </form>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">{["Gold price", "Nifty", "Weather Hyderabad", "Bitcoin", "iPhone 18"].map(q => <Link key={q} href={`/search?q=${encodeURIComponent(q)}`} className="rounded-full border border-black/10 px-3 py-1.5 text-xs font-bold text-black/60 hover:border-black/25 hover:text-black">{q}</Link>)}</div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mb-5 flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-black/45">Workspaces</p><h2 className="mt-1 text-2xl font-semibold tracking-tight">Everything in one system</h2></div><Link href="/discover" className="hidden text-sm font-bold text-black/55 hover:text-black sm:block">Explore all →</Link></div>
-        <div className="grid gap-px overflow-hidden rounded-2xl border border-black/10 bg-black/10 sm:grid-cols-2 lg:grid-cols-4">
-          {workspaces.map(({ name, description, icon: Icon, href }) => <Link key={name} href={href} className="group bg-white p-5 transition hover:bg-black/[.025] sm:p-6"><div className="flex items-start justify-between"><div className="grid size-9 place-items-center rounded-lg bg-black text-white"><Icon size={17} /></div><ArrowUpRight size={16} className="text-black/25 transition group-hover:text-black" /></div><h3 className="mt-8 text-base font-bold">{name}</h3><p className="mt-2 text-sm leading-6 text-black/55">{description}</p></Link>)}
-        </div>
-      </section>
+    <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="flex items-end justify-between gap-4"><div><p className="text-[11px] font-black uppercase tracking-[.2em] text-black/45">Live snapshot</p><h2 className="mt-1 text-2xl font-black tracking-tight">Right now</h2></div><span className="text-xs font-bold text-black/40">Auto-refresh · 5 min</span></div>
+      <div className="mt-4 grid gap-px overflow-hidden rounded-2xl border border-black/10 bg-black/10 sm:grid-cols-2 lg:grid-cols-4">{snapshot.map(({ label, value, detail, icon: Icon, href, live }) => <Link key={label} href={href} className="group bg-white p-5 transition hover:bg-black/[.025]"><div className="flex items-center gap-2"><Icon size={17} /><span className="text-xs font-bold text-black/50">{label}</span>{live && <span className="ml-auto size-1.5 rounded-full bg-black" aria-label="Live data" />}</div><p className="mt-5 text-2xl font-black tracking-tight">{value}</p><p className="mt-1 text-xs text-black/45">{detail}</p></Link>)}</div>
+    </section>
 
-      <section className="border-y border-black/10 bg-black/[.018]"><div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.16em] text-black/45">Social layer</p><h2 className="mt-1 text-2xl font-semibold tracking-tight">Connect through what you care about</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-black/55">TargetBud is designed to work with zero users and become more valuable as real people, discussions and communities grow.</p></div><div className="grid gap-3 md:grid-cols-3">{social.map(({ name, description, icon: Icon, href }) => <Link key={name} href={href} className="group rounded-2xl border border-black/10 bg-white p-5 hover:border-black/25"><div className="flex items-center gap-3"><Icon size={18} /><h3 className="font-bold">{name}</h3><ArrowUpRight size={15} className="ml-auto text-black/25 group-hover:text-black" /></div><p className="mt-3 text-sm leading-6 text-black/55">{description}</p></Link>)}</div></div></section>
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8"><div className="rounded-2xl bg-black p-6 text-white sm:p-8"><div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-white/50">Create anything</p><h2 className="mt-2 text-2xl font-semibold tracking-tight">Turn your media into something shareable.</h2></div><Link href="/video-studio" className="inline-flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-black">Open Video Studio <ArrowUpRight size={16} /></Link></div></div></section>
-    </main>
-  );
+    <section className="border-y border-black/10 bg-black/[.018]"><div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"><div className="flex items-end justify-between"><div><p className="text-[11px] font-black uppercase tracking-[.2em] text-black/45">Trending today</p><h2 className="mt-1 text-2xl font-black">What people are looking for</h2></div><span className="text-xs text-black/40">Current themes</span></div><div className="mt-4 flex flex-wrap gap-2">{trending.map(topic => <Link key={topic} href={`/search?q=${encodeURIComponent(topic)}`} className="rounded-xl border border-black/10 bg-white px-4 py-3 text-sm font-bold hover:border-black/25">{topic} <ArrowUpRight className="ml-1 inline" size={14} /></Link>)}</div></div></section>
+
+    <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"><div className="flex items-end justify-between"><div><p className="text-[11px] font-black uppercase tracking-[.2em] text-black/45">Today’s important stories</p><h2 className="mt-1 text-2xl font-black">The Daily</h2><p className="mt-1 text-sm text-black/50">Original TargetBud editorial, with source attribution for verification.</p></div><Link href="/news" className="text-sm font-black">Open newspaper →</Link></div><div className="mt-5 rounded-2xl border border-black/10 p-5 sm:p-7"><div className="grid gap-5 md:grid-cols-3"><div><p className="text-xs font-black uppercase tracking-wider text-black/40">News</p><h3 className="mt-2 text-xl font-black">Fresh India & world coverage</h3><p className="mt-2 text-sm leading-6 text-black/50">Read the full zoomable-style digital newspaper edition.</p></div><div><p className="text-xs font-black uppercase tracking-wider text-black/40">Markets</p><h3 className="mt-2 text-xl font-black">Follow the market pulse</h3><p className="mt-2 text-sm leading-6 text-black/50">Open market tools for indices, stocks and watchlists.</p></div><div><p className="text-xs font-black uppercase tracking-wider text-black/40">Sports</p><h3 className="mt-2 text-xl font-black">What’s next in sport</h3><p className="mt-2 text-sm leading-6 text-black/50">Scores, fixtures and standings in one place.</p></div></div></div></section>
+
+    <section className="border-y border-black/10"><div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"><div className="flex items-center gap-3"><Bell size={18}/><div><p className="text-[11px] font-black uppercase tracking-[.2em] text-black/45">Track & alert</p><h2 className="mt-1 text-xl font-black">Build your personal command center</h2></div></div><p className="mt-3 max-w-2xl text-sm leading-6 text-black/50">Track stocks, teams, prices, topics and events as you use TargetBud. Sign in to keep your watchlist across devices.</p><Link href="/markets" className="mt-4 inline-flex rounded-xl bg-black px-4 py-2.5 text-sm font-black text-white">Start tracking →</Link></div></section>
+
+    <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"><div className="mb-4"><p className="text-[11px] font-black uppercase tracking-[.2em] text-black/45">Explore</p><h2 className="mt-1 text-2xl font-black">Everything else, one system</h2></div><div className="grid gap-px overflow-hidden rounded-2xl border border-black/10 bg-black/10 sm:grid-cols-2 lg:grid-cols-4">{tools.map(([name, description, Icon, href]) => <Link key={name} href={href} className="group bg-white p-5 hover:bg-black/[.025]"><Icon size={18}/><h3 className="mt-6 font-black">{name}</h3><p className="mt-2 text-sm leading-6 text-black/50">{description}</p></Link>)}</div></section>
+  </main>;
 }
