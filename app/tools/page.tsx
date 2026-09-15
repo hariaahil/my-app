@@ -3,11 +3,23 @@ import DeveloperTools from "./DeveloperTools";
 import Link from "next/link";
 import { developerToolSeo } from "@/lib/developer-tools-seo";
 
+const siteUrl = "https://targetbud.vercel.app";
+const title = "Free Developer Tools Online — JSON, Base64, JWT, Regex & More | TargetBud";
+const description = "Free browser-based developer tools for JSON, Base64, URLs, JWT, regex, HTTP, text, timestamps, SEO and more. Fast, responsive and local-first.";
+
 export const metadata: Metadata = {
-  title: "Free Developer Tools Online — JSON, Base64, JWT, Regex & More",
-  description: "Free browser-based developer tools for JSON, Base64, URLs, JWT, regex, HTTP, text, timestamps, SEO and more. Fast, responsive and local-first.",
+  title,
+  description,
   keywords: ["developer tools", "online developer tools", "free developer tools", "JSON tools", "JWT decoder", "regex tester", "Base64 encoder", "SEO tools"],
-  alternates: { canonical: "https://targetbud.vercel.app/tools" },
+  alternates: { canonical: `${siteUrl}/tools` },
+  openGraph: {
+    title,
+    description,
+    url: `${siteUrl}/tools`,
+    type: "website",
+    siteName: "TargetBud",
+  },
+  twitter: { card: "summary", title, description },
 };
 
 export default function ToolsPage() {
