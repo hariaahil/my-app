@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowUpRight, BarChart3, Bell, BookOpen, Calculator, Film, Search, Trophy, WalletCards, CloudSun, Coins, Fuel, Newspaper, Bitcoin } from "lucide-react";
-import AuthButton from "@/components/auth-button";
+import { ArrowUpRight, BarChart3, Bell, BookOpen, Calculator, Film, Search, Trophy, WalletCards, CloudSun, Coins, Bitcoin, Newspaper } from "lucide-react";
+import LocalPriceSnapshot from "@/components/local-price-snapshot";
 
 export const metadata: Metadata = {
   title: "TargetBud Today — Live information, tools, news & markets",
@@ -10,7 +10,6 @@ export const metadata: Metadata = {
 };
 
 const FALLBACK = "Unavailable right now";
-
 type Snapshot = { label: string; value: string; detail?: string; icon: typeof CloudSun; href: string; live?: boolean };
 
 async function getJson(url: string) {
@@ -33,10 +32,6 @@ async function getSnapshot(): Promise<Snapshot[]> {
     { label: "USD / INR", value: inr != null ? `₹${Number(inr).toFixed(2)}` : FALLBACK, detail: "Latest free FX reference", icon: Coins, href: "/search?q=USD%20INR", live: inr != null },
     { label: "Bitcoin", value: btc != null ? `₹${Number(btc).toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : FALLBACK, detail: btcChange != null ? `${btcChange >= 0 ? "+" : ""}${btcChange.toFixed(2)}% · 24h` : "Live market reference", icon: Bitcoin, href: "/markets", live: btc != null },
     { label: "Nifty / Sensex", value: "Open markets", detail: "Live market workspace", icon: BarChart3, href: "/markets" },
-    { label: "Gold", value: "Check live", detail: "Open current market data", icon: Coins, href: "/markets" },
-    { label: "Fuel", value: "Check local", detail: "Availability varies by location", icon: Fuel, href: "/search?q=Hyderabad%20fuel%20price" },
-    { label: "Sports", value: "Live & next", detail: "Scores, fixtures and standings", icon: Trophy, href: "/sports" },
-    { label: "News", value: "Current", detail: "Fresh TargetBud editorial", icon: Newspaper, href: "/news" },
   ];
 }
 
@@ -59,25 +54,19 @@ const tools = [
 export default async function Home() {
   const [snapshot, trending] = await Promise.all([getSnapshot(), getTrending()]);
   return <main className="min-h-[calc(100vh-56px)] bg-white text-black">
-    <section className="border-b border-black/10">
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-        <div className="mx-auto max-w-4xl text-center">
-          <p className="text-[11px] font-black uppercase tracking-[.24em] text-black/45">TargetBud Today</p>
-          <h1 className="mt-3 text-4xl font-black tracking-[-.05em] sm:text-6xl">Understand what’s happening right now.</h1>
-          <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-black/55">Search anything useful. See live information. Read what matters. Track what you care about.</p>
-          <form action="/search" className="mx-auto mt-7 flex max-w-3xl items-center rounded-2xl border-2 border-black bg-white p-2 shadow-sm">
-            <Search className="ml-2 shrink-0" size={21} />
-            <input name="q" aria-label="Search TargetBud" placeholder="What do you want to know today?  Gold price · Nifty · Weather Hyderabad · Bitcoin" className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm outline-none sm:text-base" />
-            <button className="rounded-xl bg-black px-4 py-3 text-sm font-black text-white">Search</button>
-          </form>
-          <div className="mt-4 flex flex-wrap justify-center gap-2">{["Gold price", "Nifty", "Weather Hyderabad", "Bitcoin", "iPhone 18"].map(q => <Link key={q} href={`/search?q=${encodeURIComponent(q)}`} className="rounded-full border border-black/10 px-3 py-1.5 text-xs font-bold text-black/60 hover:border-black/25 hover:text-black">{q}</Link>)}</div>
-        </div>
-      </div>
-    </section>
+    <section className="border-b border-black/10"><div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8"><div className="mx-auto max-w-4xl text-center">
+      <p className="text-[11px] font-black uppercase tracking-[.24em] text-black/45">TargetBud Today</p>
+      <h1 className="mt-3 text-4xl font-black tracking-[-.05em] sm:text-6xl">Understand what’s happening right now.</h1>
+      <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-black/55">Search anything useful. See live information. Read what matters. Track what you care about.</p>
+      <form action="/search" className="mx-auto mt-7 flex max-w-3xl items-center rounded-2xl border-2 border-black bg-white p-2 shadow-sm"><Search className="ml-2 shrink-0" size={21} /><input name="q" aria-label="Search TargetBud" placeholder="What do you want to know today?  Gold price · Nifty · Weather Hyderabad · Bitcoin" className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm outline-none sm:text-base" /><button className="rounded-xl bg-black px-4 py-3 text-sm font-black text-white">Search</button></form>
+      <div className="mt-4 flex flex-wrap justify-center gap-2">{["Gold price", "Nifty", "Weather Hyderabad", "Bitcoin", "iPhone 18"].map(q => <Link key={q} href={`/search?q=${encodeURIComponent(q)}`} className="rounded-full border border-black/10 px-3 py-1.5 text-xs font-bold text-black/60 hover:border-black/25 hover:text-black">{q}</Link>)}</div>
+    </div></div></section>
 
-    <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="flex items-end justify-between gap-4"><div><p className="text-[11px] font-black uppercase tracking-[.2em] text-black/45">Live snapshot</p><h2 className="mt-1 text-2xl font-black tracking-tight">Right now</h2></div><span className="text-xs font-bold text-black/40">Auto-refresh · 5 min</span></div>
-      <div className="mt-4 grid gap-px overflow-hidden rounded-2xl border border-black/10 bg-black/10 sm:grid-cols-2 lg:grid-cols-4">{snapshot.map(({ label, value, detail, icon: Icon, href, live }) => <Link key={label} href={href} className="group bg-white p-5 transition hover:bg-black/[.025]"><div className="flex items-center gap-2"><Icon size={17} /><span className="text-xs font-bold text-black/50">{label}</span>{live && <span className="ml-auto size-1.5 rounded-full bg-black" aria-label="Live data" />}</div><p className="mt-5 text-2xl font-black tracking-tight">{value}</p><p className="mt-1 text-xs text-black/45">{detail}</p></Link>)}</div>
+    <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"><div className="flex items-end justify-between gap-4"><div><p className="text-[11px] font-black uppercase tracking-[.2em] text-black/45">Live snapshot</p><h2 className="mt-1 text-2xl font-black tracking-tight">Right now</h2></div><span className="text-xs font-bold text-black/40">Auto-refresh · 5 min</span></div>
+      <div className="mt-4 grid gap-px overflow-hidden rounded-2xl border border-black/10 bg-black/10 sm:grid-cols-2 lg:grid-cols-4">
+        {snapshot.map(({ label, value, detail, icon: Icon, href, live }) => <Link key={label} href={href} className="group bg-white p-5 transition hover:bg-black/[.025]"><div className="flex items-center gap-2"><Icon size={17} /><span className="text-xs font-bold text-black/50">{label}</span>{live && <span className="ml-auto size-1.5 rounded-full bg-black" aria-label="Live data" />}</div><p className="mt-5 text-2xl font-black tracking-tight">{value}</p><p className="mt-1 text-xs text-black/45">{detail}</p></Link>)}
+        <LocalPriceSnapshot />
+      </div>
     </section>
 
     <section className="border-y border-black/10 bg-black/[.018]"><div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"><div className="flex items-end justify-between"><div><p className="text-[11px] font-black uppercase tracking-[.2em] text-black/45">Trending today</p><h2 className="mt-1 text-2xl font-black">What people are looking for</h2></div><span className="text-xs text-black/40">Current themes</span></div><div className="mt-4 flex flex-wrap gap-2">{trending.map(topic => <Link key={topic} href={`/search?q=${encodeURIComponent(topic)}`} className="rounded-xl border border-black/10 bg-white px-4 py-3 text-sm font-bold hover:border-black/25">{topic} <ArrowUpRight className="ml-1 inline" size={14} /></Link>)}</div></div></section>
