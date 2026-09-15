@@ -21,6 +21,7 @@ Video Studio is the current top product-building priority: a browser-first, orig
 - Browser composition now creates an audio MediaStream destination and mixes audio-bearing video/audio clips into the recorded project.
 - Audio clips are synchronized to their project segment and use short automatic fade-in/fade-out ramps to reduce boundary clicks.
 - Independent multi-track domain model for video, overlay and audio placement, with per-clip audio mix settings and safe fade/gain calculations.
+- Export composition model now accepts per-clip volume/fade-in/fade-out settings, preparing independent audio controls for the editor UI.
 - Automated unit coverage for cross-track placement, track normalization and audio mix/fade behavior.
 - Accessible labels for key controls and responsive desktop/mobile layout.
 - Metadata probing for imported audio/video duration.
@@ -28,14 +29,14 @@ Video Studio is the current top product-building priority: a browser-first, orig
 
 ## Not yet production-complete
 - UI exposure for independent multi-track lanes and user-configurable per-clip audio fades/mix levels.
-- Wiring the lazy FFmpeg loader into the final MP4 render command and validating browser memory/performance limits.
+- Full production validation of FFmpeg-backed MP4 rendering across current Chrome, Edge and Safari, including browser memory/performance limits.
 - Transitions, filters, crop/position controls and caption editor.
 - AI captions, voiceover, templates, article/news-to-short workflow, image-to-video.
 - Supabase saved projects/cloud storage and creator monetisation.
 
 ## Next implementation order
 1. Wire the multi-track model into the editor UI: visible video/overlay/audio lanes, clip placement, lane targeting, and independent volume/fade controls.
-2. Use the lazy FFmpeg/WASM loader for a reliable MP4 render pipeline without bloating the initial route bundle; keep MediaRecorder as the fallback.
+2. Validate the lazy FFmpeg/WASM MP4 pipeline in production with representative short projects; keep MediaRecorder/WebM as the explicit fallback.
 3. Add captions, transitions, crop and basic filters.
 4. Add templates and TargetBud News/Journal -> short-video handoff.
 5. Add optional authenticated project persistence in Supabase.
