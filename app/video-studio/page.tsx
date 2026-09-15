@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import VideoStudio from "./video-studio-v3";
+import VideoStudio from "./video-studio-v4";
 
 const videoStudioUrl = "https://targetbud.vercel.app/video-studio";
 
