@@ -1,0 +1,81 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { BookOpen, CheckCircle2, Clock3, Dumbbell, FileText, Flame, GraduationCap, RotateCcw, Target, Trophy } from "lucide-react";
+
+const quiz = [
+  { q: "If the price of an article increases from ₹400 to ₹460, what is the percentage increase?", a: ["10%", "12%", "15%", "20%"], correct: 2, why: "Increase = ₹60. Percentage increase = 60/400 × 100 = 15%." },
+  { q: "A sum is divided in the ratio 3:5. If the total is 64, what is the smaller share?", a: ["18", "24", "30", "40"], correct: 1, why: "Total parts = 8. One part = 64/8 = 8, so the smaller share is 3 × 8 = 24." },
+  { q: "Which topic is explicitly included in the 2026 SI Preliminary Written Test General Studies syllabus?", a: ["Telangana Movement and State Formation", "Computer programming", "Organic chemistry only", "Commercial law"], correct: 0, why: "The official Annexure II includes Telangana Movement and State Formation." },
+  { q: "The 2026 SI Preliminary Written Test has how many questions and marks?", a: ["100 questions, 100 marks", "150 questions, 150 marks", "200 questions, 200 marks", "250 questions, 250 marks"], correct: 2, why: "The official notification specifies 200 objective questions for 200 marks." },
+  { q: "For an OC/EWS candidate, the minimum qualifying percentage in the 2026 SI PWT is:", a: ["20%", "25%", "30%", "40%"], correct: 2, why: "The notification specifies 30% for OCs including EWS, 25% for BCs and 20% for SC/ST/Ex-Servicemen." },
+  { q: "Which pair belongs to the Arithmetic portion of the PWT syllabus?", a: ["Simple interest and time & work", "Essay and précis", "Ethics and emotional intelligence", "Reading comprehension and vocabulary"], correct: 0, why: "Simple interest and time & work are explicitly listed under Arithmetic." },
+  { q: "The 2026 SI selection sequence begins with:", a: ["Final Written Examination", "Preliminary Written Test", "Certificate Verification", "Training"], correct: 1, why: "The official scheme starts with the Preliminary Written Test, followed by PMT/PET and then FWE." },
+  { q: "In the PWT, an answer with multiple bubbles marked receives full marks.", a: ["True", "False", "Only for GS", "Only for Arithmetic"], correct: 1, why: "The notification says full marks require only the correct single bubble; other marked cases receive the stated negative treatment." },
+  { q: "Which Final Written paper contains personality-test topics such as ethics, gender sensitivity, social awareness and emotional intelligence?", a: ["Paper I", "Paper II", "Paper III", "Paper IV"], correct: 3, why: "The official Annexure III places these personality-test areas in Paper IV General Studies." },
+  { q: "The PWT is conducted as one paper of what duration?", a: ["90 minutes", "2 hours", "3 hours", "4 hours"], correct: 2, why: "The 2026 SI notification specifies one PWT paper of three hours." },
+];
+
+const syllabus = [
+  ["Arithmetic", "Number system, SI/CI, ratio & proportion, averages, percentages, profit & loss, time & work, work & wages, time & distance, clocks/calendars, partnership and mensuration."],
+  ["Reasoning / Mental Ability", "Verbal and non-verbal reasoning, analogies, similarities/differences, spatial visualization/orientation, problem solving, analysis, judgment, decision making and visual memory."],
+  ["General Science", "Contemporary science and technology, everyday observation and experience, and environmental protection issues."],
+  ["Current Affairs", "National and international current events, refreshed continuously from verified sources."],
+  ["History & Geography", "Indian history and national movement, broad social/economic/cultural/political understanding, geography principles and geography of India."],
+  ["Polity & Economy", "Indian political system, rural development, planning and economic reforms."],
+  ["Telangana", "Telangana Movement and State Formation: 1948–1970, 1971–1990 and 1991–2014."],
+  ["Final Written", "English; Telugu/Urdu; Arithmetic & Reasoning; General Studies including personality-test topics."],
+];
+
+const plan = [
+  ["Learn", "One concept explained from basics → standard method → shortcut → examples."],
+  ["Practice", "Topic-wise questions with increasing difficulty and timed practice."],
+  ["Daily Quiz", "10 fresh questions every day with answer-specific explanations."],
+  ["Previous-paper model", "Exam-style questions built to match the official structure without copying copyrighted papers."],
+  ["Mock Exam", "Timed full-length simulations using the current official exam model."],
+  ["Weakness Engine", "Every mistake is tagged to a topic and fed into future revision."],
+  ["Revision", "Spaced review of weak topics and previously missed questions."],
+  ["Physical Prep", "Run/PET preparation tracker alongside written preparation."],
+];
+
+export default function StudyPage() {
+  const [tab, setTab] = useState("today");
+  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [showResults, setShowResults] = useState(false);
+  const score = useMemo(() => quiz.reduce((n, x, i) => n + (answers[i] === x.correct ? 1 : 0), 0), [answers]);
+
+  return <main className="min-h-screen bg-white text-black">
+    <section className="border-b border-black/10 bg-black text-white">
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="flex flex-wrap items-center gap-2 text-[11px] font-black uppercase tracking-[.2em] text-white/55"><GraduationCap size={16}/> TargetBud Study</div>
+        <div className="mt-3 max-w-4xl"><h1 className="text-4xl font-black tracking-[-.04em] sm:text-6xl">Telangana Police SI & Constable preparation.</h1><p className="mt-4 max-w-3xl text-base leading-7 text-white/65">A daily preparation system: learn the syllabus, practice, take a fresh quiz, analyse mistakes, revise weak topics and train for the physical stage.</p></div>
+        <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[["PWT", "200 Q · 200 marks · 3 hours", FileText],["Negative marking", "20% of the question's marks", Target],["Stages", "PWT → PMT/PET → FWE", Trophy],["Daily target", "2 hours focused study", Clock3]].map(([a,b,I]) => <div key={a as string} className="rounded-2xl border border-white/15 bg-white/5 p-4"><I size={17}/><p className="mt-4 text-sm font-black">{a as string}</p><p className="mt-1 text-xs text-white/55">{b as string}</p></div>)}
+        </div>
+      </div>
+    </section>
+
+    <section className="sticky top-14 z-30 border-b border-black/10 bg-white/95 backdrop-blur"><div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 py-2 sm:px-6 lg:px-8">{[["today","Today"],["syllabus","Syllabus"],["learn","Learn"],["quiz","Daily Quiz"],["mock","Mock Exam"],["revision","Revision"],["physical","Physical"]].map(([id,label])=><button key={id} onClick={()=>setTab(id)} className={`whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-black ${tab===id?"bg-black text-white":"text-black/55 hover:bg-black/[.05]"}`}>{label}</button>)}</div></section>
+
+    <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      {tab === "today" && <div className="grid gap-5 lg:grid-cols-[1.5fr_1fr]">
+        <div className="rounded-2xl border border-black/10 p-6"><p className="text-[11px] font-black uppercase tracking-[.2em] text-black/45">Today’s mission</p><h2 className="mt-2 text-3xl font-black">Build the habit first.</h2><div className="mt-6 grid gap-3 sm:grid-cols-2">{plan.map(([a,b],i)=><div key={a} className="rounded-xl border border-black/10 p-4"><div className="flex items-center gap-2"><span className="grid size-7 place-items-center rounded-lg bg-black text-xs font-black text-white">{i+1}</span><b className="text-sm">{a}</b></div><p className="mt-3 text-sm leading-6 text-black/55">{b}</p></div>)}</div></div>
+        <div className="rounded-2xl border border-black/10 bg-black/[.02] p-6"><Flame size={20}/><h2 className="mt-4 text-xl font-black">Daily delivery</h2><p className="mt-2 text-sm leading-6 text-black/55">Every day the scheduler will deliver a fresh study package: lesson, current affairs, practice questions, revision and a timed quiz. The portal will keep the same package available for later review.</p><div className="mt-5 rounded-xl border border-black/10 bg-white p-4"><p className="text-xs font-black uppercase tracking-wider text-black/40">Today</p><p className="mt-2 font-black">10-question diagnostic quiz ready</p><button onClick={()=>setTab("quiz")} className="mt-4 rounded-xl bg-black px-4 py-2.5 text-xs font-black text-white">Start quiz →</button></div></div>
+      </div>}
+
+      {tab === "syllabus" && <div><p className="text-[11px] font-black uppercase tracking-[.2em] text-black/45">Official 2026 syllabus map</p><h2 className="mt-2 text-3xl font-black">Everything we will cover</h2><p className="mt-3 max-w-3xl text-sm leading-6 text-black/55">The structure below is based on the Telangana Police Recruitment Board’s 29 July 2026 SI notification. When the board changes the notification, TargetBud should version the preparation plan rather than silently changing the syllabus.</p><div className="mt-6 grid gap-3 md:grid-cols-2">{syllabus.map(([a,b])=><article key={a} className="rounded-2xl border border-black/10 p-5"><h3 className="font-black">{a}</h3><p className="mt-2 text-sm leading-6 text-black/55">{b}</p></article>)}</div></div>}
+
+      {tab === "learn" && <div className="grid gap-5 lg:grid-cols-3">{[["Percentages","Formula first → standard method → shortcut → practice","15 min"],["Number System","Factors, multiples, divisibility and remainder thinking","20 min"],["Reasoning","Pattern recognition before speed shortcuts","20 min"],["Telangana Movement","Timeline + causes + key milestones + revision questions","25 min"],["Indian Polity","Concept → example → MCQ → mistake review","25 min"],["Current Affairs","Daily verified facts → why it matters → quiz","20 min"]].map(([a,b,c])=><article key={a} className="rounded-2xl border border-black/10 p-5"><BookOpen size={18}/><h3 className="mt-5 text-lg font-black">{a}</h3><p className="mt-2 text-sm leading-6 text-black/55">{b}</p><span className="mt-4 inline-flex rounded-full bg-black/[.05] px-3 py-1 text-xs font-bold">{c}</span></article>)}</div>}
+
+      {tab === "quiz" && <div className="mx-auto max-w-4xl"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[11px] font-black uppercase tracking-[.2em] text-black/45">Daily Quiz</p><h2 className="mt-2 text-3xl font-black">10 questions · mixed SI preparation</h2></div><span className="rounded-full bg-black px-3 py-1.5 text-xs font-black text-white">{Object.keys(answers).length}/10 answered</span></div><div className="mt-6 space-y-4">{quiz.map((x,i)=><article key={i} className="rounded-2xl border border-black/10 p-5"><div className="flex gap-3"><span className="grid size-7 shrink-0 place-items-center rounded-lg bg-black text-xs font-black text-white">{i+1}</span><div className="flex-1"><h3 className="font-black leading-6">{x.q}</h3><div className="mt-4 grid gap-2 sm:grid-cols-2">{x.a.map((opt,j)=><button key={opt} onClick={()=>{setAnswers(v=>({...v,[i]:j}));setShowResults(false)}} className={`rounded-xl border px-4 py-3 text-left text-sm font-bold transition ${answers[i]===j?"border-black bg-black text-white":"border-black/10 hover:border-black/30"}`}>{opt}</button>)}</div>{showResults && <div className={`mt-4 rounded-xl p-4 text-sm leading-6 ${answers[i]===x.correct?"bg-black/[.04]":"bg-black/[.06]"}`}><b>{answers[i]===x.correct?"Correct":"Review this one"}.</b> {x.why}</div>}</div></div></article>)}</div><button onClick={()=>setShowResults(true)} className="mt-6 rounded-xl bg-black px-5 py-3 text-sm font-black text-white">Finish & show explanations</button>{showResults&&<button onClick={()=>{setAnswers({});setShowResults(false)}} className="ml-2 rounded-xl border border-black/10 px-5 py-3 text-sm font-black"><RotateCcw size={15} className="mr-2 inline"/>Retry</button>}{showResults&&<p className="mt-4 font-black">Score: {score}/10</p>}</div>}
+
+      {tab === "mock" && <div className="grid gap-5 lg:grid-cols-2"><div className="rounded-2xl border border-black/10 p-6"><FileText size={20}/><h2 className="mt-5 text-2xl font-black">PWT full mock</h2><p className="mt-2 text-sm leading-6 text-black/55">200 objective questions · 200 marks · 3 hours. The official 2026 model has 100 Arithmetic & Reasoning/Mental Ability questions and 100 General Studies questions. The mock engine will enforce the official negative-marking rule.</p><button onClick={()=>setTab("quiz")} className="mt-5 rounded-xl bg-black px-4 py-2.5 text-sm font-black text-white">Practice sample first</button></div><div className="rounded-2xl border border-black/10 p-6"><Trophy size={20}/><h2 className="mt-5 text-2xl font-black">Previous-paper model</h2><p className="mt-2 text-sm leading-6 text-black/55">We will build original questions that reproduce the exam’s skill mix, difficulty progression, timing pressure and topic distribution. We will not republish copyrighted past papers.</p><div className="mt-5 grid grid-cols-2 gap-2">{["Topic weight", "Difficulty", "Time pressure", "Negative marks"].map(x=><div key={x} className="rounded-xl border border-black/10 p-3 text-xs font-bold">{x}</div>)}</div></div></div>}
+
+      {tab === "revision" && <div className="grid gap-5 md:grid-cols-3"><div className="rounded-2xl border border-black/10 p-5"><RotateCcw size={19}/><h3 className="mt-5 font-black">Spaced revision</h3><p className="mt-2 text-sm leading-6 text-black/55">Topics return after increasing gaps, with weak areas returning sooner.</p></div><div className="rounded-2xl border border-black/10 p-5"><Target size={19}/><h3 className="mt-5 font-black">Mistake bank</h3><p className="mt-2 text-sm leading-6 text-black/55">Every wrong answer becomes a revision item with an explanation and a new practice question.</p></div><div className="rounded-2xl border border-black/10 p-5"><CheckCircle2 size={19}/><h3 className="mt-5 font-black">Readiness</h3><p className="mt-2 text-sm leading-6 text-black/55">Progress will be based on actual coverage, accuracy, speed and mock performance—not an arbitrary AI score.</p></div></div>}
+
+      {tab === "physical" && <div className="grid gap-5 lg:grid-cols-2"><div className="rounded-2xl border border-black/10 p-6"><Dumbbell size={20}/><h2 className="mt-4 text-2xl font-black">Physical preparation</h2><p className="mt-2 text-sm leading-6 text-black/55">The 2026 SI selection includes PMT/PET after the PWT. TargetBud will keep a separate physical-training log so written preparation does not hide the physical requirement.</p></div><div className="rounded-2xl border border-black/10 p-6"><h3 className="font-black">Run tracker</h3><div className="mt-4 grid grid-cols-2 gap-3">{[["Men","1600 m","7:15 qualifying for the listed qualifying posts"],["Women","800 m","5:20 qualifying for the listed qualifying posts"]].map(([a,b,c])=><div key={a} className="rounded-xl border border-black/10 p-4"><p className="text-xs font-black uppercase text-black/40">{a}</p><p className="mt-2 font-black">{b}</p><p className="mt-1 text-xs leading-5 text-black/50">{c}</p></div>)}</div></div></div>}
+    </section>
+
+    <section className="border-t border-black/10 bg-black/[.02]"><div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"><p className="text-[11px] font-black uppercase tracking-[.2em] text-black/45">Daily scheduler</p><h2 className="mt-2 text-2xl font-black">What TargetBud will push every day</h2><div className="mt-5 grid gap-3 md:grid-cols-4">{[["Morning","Today’s lesson + current affairs"],["Midday","10–20 practice questions"],["Evening","Revision of weak topics"],["Night","Daily quiz + score + mistakes"]].map(([a,b])=><div key={a} className="rounded-2xl border border-black/10 bg-white p-5"><p className="font-black">{a}</p><p className="mt-2 text-sm leading-6 text-black/55">{b}</p></div>)}</div><p className="mt-5 text-xs text-black/45">The schedule will be versioned against the official notification. Current 2026 SI facts are sourced from the Telangana Police Recruitment Board notification dated 29 July 2026.</p></div></section>
+  </main>;
+}
