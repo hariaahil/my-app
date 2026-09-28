@@ -49,7 +49,9 @@ function GoalTrendChart({investments,flows,eodEntries,projection,target,today,st
  },[range,rangeStart,today.toDateString()]);
  const allEvents=useMemo(()=>{
   const sourceDates=[...investments.map(i=>dateOnly(i.invested_on)),...flows.map(f=>dateOnly(f.flow_date)),...eodEntries.map(e=>dateOnly(e.entry_date))];
-  const from=sourceDates.length?new Date(Math.min(...sourceDates.map(d=>d.getTime()))):rangeStart,to=today,result:ChartEvent[]=[];
+  const from=sourceDates.length?new Date(Math.min(...sourceDates.map(d=>d.getTime()))):rangeStart;
+  const to=today;
+  const result:ChartEvent[]=[];
   flows.forEach(f=>eventDates(f,from,to).forEach(d=>result.push({id:\`flow-\${f.id}-\${dateKey(d)}\`,date:d,label:f.source||f.category||"Cash flow",type:f.flow_type,amount:Number(f.amount||0),note:f.note})));
   eodEntries.forEach(e=>{const d=dateOnly(e.entry_date);if(d>=from&&d<=to)result.push({id:\`eod-\${e.id}\`,date:d,label:e.category||"Expense",type:"expense",amount:Number(e.amount||0),note:e.note});});
   investments.forEach(i=>{
