@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type PointerEvent, type WheelEvent } from "react";
 import { Banknote, LogIn, ReceiptText, RefreshCw, Target, TrendingUp, WalletCards } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
 import { DEFAULT_GOAL_TARGET, currentValue, projectGoal, recurringMonthly, isActive, addMonths, type GoalActivity, type GoalInvestment } from "@/lib/goal-projection";
@@ -25,16 +25,6 @@ const eventDates=(flow:CashFlow,from:Date,to:Date)=>{
  for(let d=new Date(start);d<=to;d=addMonths(d,1)){if(d>=from&&d<=end)out.push(new Date(d));}
  return out;
 };
-const investmentContributionAt=(i:GoalInvestment,date:Date)=>{
- const start=dateOnly(i.invested_on); if(start>date)return 0;
- let total=Math.max(0,Number(i.principal_amount||0));
- if(i.contribution_type==="Monthly"&&Number(i.monthly_addition||0)>0){
-  const months=Math.max(0,(date.getFullYear()-start.getFullYear())*12+date.getMonth()-start.getMonth());
-  total+=Math.max(0,Number(i.monthly_addition||0))*months;
- }
- return total;
-};
-
 function GoalTrendChart({investments,flows,eodEntries,projection,target,today,startingCapital}:{investments:GoalInvestment[];flows:CashFlow[];eodEntries:EodEntry[];projection:{date:Date;value:number}[];target:number;today:Date;startingCapital:number}){
  const [range,setRange]=useState<ChartRange>("Month");
  const [zoom,setZoom]=useState(1);
@@ -91,8 +81,8 @@ function GoalTrendChart({investments,flows,eodEntries,projection,target,today,st
  const pathFor=(series:{value:number}[])=>series.length?series.map((p,i)=>\`\${i?"L":"M"}\${xFor(i)},\${plotY(p.value)}\`).join(" "):"";
  const selectedIndex=selected?visible.findIndex(p=>dateKey(p.date)===dateKey(selected.date)):-1;
  const selectedEvents=selected?allEvents.filter(e=>dateKey(e.date)===dateKey(selected.date)):[];
- const handleWheel=(e:React.WheelEvent<SVGSVGElement>)=>{e.preventDefault();setZoom(z=>Math.max(1,Math.min(12,z+(e.deltaY<0?1:-1))))};
- const handlePointerDown=(e:React.PointerEvent<SVGSVGElement>)=>{(e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId);setDrag({x:e.clientX,pan});};
+ const handleWheel=(e:WheelEvent<SVGSVGElement>)=>{e.preventDefault();setZoom(z=>Math.max(1,Math.min(12,z+(e.deltaY<0?1:-1))))};
+ const handlePointerDown=(e:PointerEvent<SVGSVGElement>)=>{(e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId);setDrag({x:e.clientX,pan});};
  const handlePointerMove=(e:React.PointerEvent<SVGSVGElement>)=>{if(!drag)return;const delta=(drag.x-e.clientX)/Math.max(1,plotW)*visibleCount;setPan(drag.pan+delta);};
  const handlePointerUp=()=>setDrag(null);
  const formatDate=(d:Date)=>range==="Day"?d.toLocaleDateString("en-IN",{day:"numeric",month:"short"}):range==="Month"?d.toLocaleDateString("en-IN",{month:"short",year:"2-digit"}):d.toLocaleDateString("en-IN",{year:"numeric"});
