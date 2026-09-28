@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type PointerEvent, type WheelEvent } from "react";
+import { useEffect, useMemo, useState, type MouseEvent, type PointerEvent, type WheelEvent } from "react";
 import { Banknote, LogIn, ReceiptText, RefreshCw, Target, TrendingUp, WalletCards } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
 import { DEFAULT_GOAL_TARGET, currentValue, projectGoal, recurringMonthly, isActive, addMonths, dateOnly, type GoalActivity, type GoalInvestment } from "@/lib/goal-projection";
@@ -93,7 +93,7 @@ function GoalContributionChart({investments,flows,eodEntries,projection,target,t
  const handlePointerDown=(e:PointerEvent<SVGSVGElement>)=>{e.currentTarget.setPointerCapture(e.pointerId);setDrag({x:e.clientX,pan})};
  const handlePointerMove=(e:PointerEvent<SVGSVGElement>)=>{if(!drag)return;const delta=(drag.x-e.clientX)/Math.max(1,plotW)*visibleCount;setPan(Math.max(0,Math.min(maxOffset,drag.pan+delta)))};
  const handlePointerUp=()=>setDrag(null);
- const handleChartClick=(e:React.MouseEvent<SVGSVGElement>)=>{if(drag)return;const rect=e.currentTarget.getBoundingClientRect();const localX=((e.clientX-rect.left)/rect.width)*width;const raw=((localX-left)/Math.max(1,plotW))*Math.max(0,points.length-1);const index=Math.max(0,Math.min(points.length-1,Math.round(raw)));if(points[index])setSelected(points[index]);};
+ const handleChartClick=(e:MouseEvent<SVGSVGElement>)=>{if(drag)return;const rect=e.currentTarget.getBoundingClientRect();const localX=((e.clientX-rect.left)/rect.width)*width;const raw=((localX-left)/Math.max(1,plotW))*Math.max(0,points.length-1);const index=Math.max(0,Math.min(points.length-1,Math.round(raw)));if(points[index])setSelected(points[index]);};
  const zoomIn=()=>setZoom(z=>Math.min(20,z+1));
  const zoomOut=()=>setZoom(z=>Math.max(1,z-1));
  const resetView=()=>{setZoom(1);setPan(0);};
