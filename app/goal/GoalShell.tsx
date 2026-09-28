@@ -35,7 +35,7 @@ const investmentContributionAt=(i:GoalInvestment,date:Date)=>{
  return total;
 };
 
-function GoalTrendChart({investments,flows,eodEntries,projection,target,today,startingCapital}:{investments:GoalInvestment[];flows:CashFlow[];eodEntries:EodEntry[];projection:ChartPoint[];target:number;today:Date;startingCapital:number}){
+function GoalTrendChart({investments,flows,eodEntries,projection,target,today,startingCapital}:{investments:GoalInvestment[];flows:CashFlow[];eodEntries:EodEntry[];projection:{date:Date;value:number}[];target:number;today:Date;startingCapital:number}){
  const [range,setRange]=useState<ChartRange>("Month");
  const [zoom,setZoom]=useState(1);
  const [selected,setSelected]=useState<ChartPoint|null>(null);
