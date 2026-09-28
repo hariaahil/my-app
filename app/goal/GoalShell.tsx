@@ -9,15 +9,14 @@ const money=(n:number)=>`₹${Math.round(Math.max(0,n)).toLocaleString("en-IN")}
 const dateText=(d:Date)=>d.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});
 
 type ChartRange="Day"|"Month"|"Year"|"All";
-type ChartPoint={date:Date;value:number;income:number;expenses:number;invested:number;portfolio:number;netCash:number};
+type ContributionPoint={date:Date;required:number;actual:number;actualRaw:number;goalValue:number;gap:number};
 type CashFlow={id:string;flow_type:"income"|"expense";amount:number;source:string|null;flow_date:string;note:string|null;is_recurring:boolean;recurrence:string;recurrence_end:string|null;category:string|null};
 type EodEntry={id:string;entry_date:string;category:string;amount:number;note:string|null};
-type ChartEvent={id:string;date:Date;label:string;type:"income"|"expense"|"investment";amount:number;note:string|null};
 
 const clampDate=(d:Date)=>new Date(d.getFullYear(),d.getMonth(),d.getDate());
-const dateKey=(d:Date)=>{const x=clampDate(d);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`};
+const dateKey=(d:Date)=>{const x=clampDate(d);return \`\${x.getFullYear()}-\${String(x.getMonth()+1).padStart(2,"0")}-\${String(x.getDate()).padStart(2,"0")}\`};
 const eventDates=(flow:CashFlow,from:Date,to:Date)=>{
- const out:Date[]=[]; const start=clampDate(new Date(`${flow.flow_date}T00:00:00`)); const end=flow.recurrence_end?clampDate(new Date(`${flow.recurrence_end}T00:00:00`)):to;
+ const out:Date[]=[];const start=clampDate(new Date(\`\${flow.flow_date}T00:00:00\`));const end=flow.recurrence_end?clampDate(new Date(\`\${flow.recurrence_end}T00:00:00\`)):to;
  if(start>to||end<from)return out;
  if(!flow.is_recurring||flow.recurrence==="One-time"){if(start>=from&&start<=to)out.push(start);return out;}
  if(flow.recurrence==="Weekly"){for(let d=new Date(start);d<=to;d.setDate(d.getDate()+7)){if(d>=from&&d<=end)out.push(new Date(d));}return out;}
@@ -25,92 +24,112 @@ const eventDates=(flow:CashFlow,from:Date,to:Date)=>{
  for(let d=new Date(start);d<=to;d=addMonths(d,1)){if(d>=from&&d<=end)out.push(new Date(d));}
  return out;
 };
-function GoalTrendChart({investments,flows,eodEntries,projection,target,today,startingCapital}:{investments:GoalInvestment[];flows:CashFlow[];eodEntries:EodEntry[];projection:{date:Date;value:number}[];target:number;today:Date;startingCapital:number}){
+
+function GoalContributionChart({investments,flows,eodEntries,projection,target,today,startingCapital}:{investments:GoalInvestment[];flows:CashFlow[];eodEntries:EodEntry[];projection:{date:Date;value:number}[];target:number;today:Date;startingCapital:number}){
  const [range,setRange]=useState<ChartRange>("Month");
  const [zoom,setZoom]=useState(1);
- const [selected,setSelected]=useState<ChartPoint|null>(null);
  const [pan,setPan]=useState(0);
+ const [selected,setSelected]=useState<ContributionPoint|null>(null);
  const [drag,setDrag]=useState<{x:number;pan:number}|null>(null);
- const [showEvents,setShowEvents]=useState(true);
- const width=900,height=380,left=72,right=24,top=30,bottom=62,plotW=width-left-right,plotH=height-top-bottom;
- const rangeStart=useMemo(()=>{
-  if(range==="Day"){const d=new Date(today);d.setDate(d.getDate()-29);return d;}
-  if(range==="Month")return addMonths(today,-23);
-  if(range==="Year")return addMonths(today,-119);
-  const dates=[...investments.map(i=>dateOnly(i.invested_on)),...flows.map(f=>dateOnly(f.flow_date)),...eodEntries.map(e=>dateOnly(e.entry_date))];
-  return dates.length?new Date(Math.min(...dates.map(d=>d.getTime()))):addMonths(today,-23);
- },[range,today.toDateString(),investments,flows,eodEntries]);
- const bucketDates=useMemo(()=>{
-  const out:Date[]=[];
-  if(range==="Day"){for(let d=new Date(rangeStart);d<=today;d.setDate(d.getDate()+1))out.push(new Date(d));}
-  else if(range==="Year"){for(let d=new Date(rangeStart);d<=today;d=addMonths(d,12))out.push(new Date(d)); if(!out.length||dateKey(out.at(-1)!)!==dateKey(today))out.push(new Date(today));}
-  else {for(let d=new Date(rangeStart);d<=today;d=addMonths(d,1))out.push(new Date(d)); if(!out.length||dateKey(out.at(-1)!)!==dateKey(today))out.push(new Date(today));}
-  return out;
- },[range,rangeStart,today.toDateString()]);
- const allEvents=useMemo(()=>{
-  const sourceDates=[...investments.map(i=>dateOnly(i.invested_on)),...flows.map(f=>dateOnly(f.flow_date)),...eodEntries.map(e=>dateOnly(e.entry_date))];
-  const from=sourceDates.length?new Date(Math.min(...sourceDates.map(d=>d.getTime()))):rangeStart;
-  const to=today;
-  const result:ChartEvent[]=[];
-  flows.forEach(f=>eventDates(f,from,to).forEach(d=>result.push({id:`flow-${f.id}-${dateKey(d)}`,date:d,label:f.source||f.category||"Cash flow",type:f.flow_type,amount:Number(f.amount||0),note:f.note})));
-  eodEntries.forEach(e=>{const d=dateOnly(e.entry_date);if(d>=from&&d<=to)result.push({id:`eod-${e.id}`,date:d,label:e.category||"Expense",type:"expense",amount:Number(e.amount||0),note:e.note});});
+ const width=920,height=400,left=82,right=28,top=38,bottom=66,plotW=width-left-right,plotH=height-top-bottom;
+
+ const sourceDates=[...investments.map(i=>dateOnly(i.invested_on)),...flows.map(f=>dateOnly(f.flow_date)),...eodEntries.map(e=>dateOnly(e.entry_date))];
+ const historyStart=sourceDates.length?new Date(Math.min(...sourceDates.map(d=>d.getTime()))):addMonths(today,-23);
+ const planTargetDate=projection.find(p=>p.value>=target)?.date??addMonths(today,60);
+
+ const allDaily=useMemo(()=>{
+  const start=new Date(historyStart),end=new Date(today);
+  const contributionByDay=new Map<string,number>();
   investments.forEach(i=>{
-   const start=dateOnly(i.invested_on); if(start>=from&&start<=to)result.push({id:`inv-${i.id}-principal`,date:start,label:i.name,type:"investment",amount:Number(i.principal_amount||0),note:`${i.investment_type} principal`});
-   if(i.contribution_type==="Monthly"&&Number(i.monthly_addition||0)>0){for(let d=addMonths(start,1);d<=to;d=addMonths(d,1)){if(d>=from)result.push({id:`inv-${i.id}-${dateKey(d)}`,date:d,label:i.name,type:"investment",amount:Number(i.monthly_addition||0),note:"Monthly addition"});}}
+   const d=dateOnly(i.invested_on);
+   if(d>=start&&d<=end)contributionByDay.set(dateKey(d),(contributionByDay.get(dateKey(d))||0)+Math.max(0,Number(i.principal_amount||0)));
+   if(i.contribution_type==="Monthly"&&Number(i.monthly_addition||0)>0){
+    for(let x=addMonths(d,1);x<=end;x=addMonths(x,1))if(x>=start)contributionByDay.set(dateKey(x),(contributionByDay.get(dateKey(x))||0)+Math.max(0,Number(i.monthly_addition||0)));
+   }
   });
-  return result.sort((a,b)=>a.date.getTime()-b.date.getTime());
- },[rangeStart,today.toDateString(),flows,eodEntries,investments]);
- const points=useMemo<ChartPoint[]>(()=>bucketDates.map(date=>{
-  let income=0,expenses=0,invested=0;
-  allEvents.forEach(e=>{if(e.date<=date){if(e.type==="income")income+=e.amount;else if(e.type==="expense")expenses+=e.amount;else invested+=e.amount;}});
-  const portfolio=investments.reduce((s,i)=>s+currentValue(i,date),0);
-  const netCash=startingCapital+income-expenses-invested;
-  return {date,value:Math.max(0,netCash+portfolio),income,expenses,invested,portfolio,netCash};
- }),[bucketDates,allEvents,investments,startingCapital]);
- const projected=useMemo(()=>bucketDates.map(d=>{
-  const p=projection.reduce((best,x)=>Math.abs(x.date.getTime()-d.getTime())<Math.abs(best.date.getTime()-d.getTime())?x:best,projection[0]??{date:d,value:0});
-  return {date:d,value:p.value};
- }),[bucketDates,projection]);
- const visibleCount=Math.max(3,Math.round(points.length/zoom));
- const maxOffset=Math.max(0,points.length-visibleCount);
- const offset=Math.max(0,Math.min(maxOffset,Math.round((pan+maxOffset/2))));
- const visible=points.slice(offset,offset+visibleCount);
- const visiblePlan=projected.slice(offset,offset+visibleCount);
- const values=[...visible.map(p=>p.value),...visiblePlan.map(p=>p.value),target,0];
- const maxValue=Math.max(...values,1);
- const plotY=(v:number)=>top+plotH-(Math.max(0,Math.min(maxValue,v))/maxValue)*plotH;
- const xFor=(idx:number)=>left+(visibleCount<=1?0:(idx/(visibleCount-1))*plotW);
- const pathFor=(series:{value:number}[])=>series.length?series.map((p,i)=>`${i?"L":"M"}${xFor(i)},${plotY(p.value)}`).join(" "):"";
- const selectedIndex=selected?visible.findIndex(p=>dateKey(p.date)===dateKey(selected.date)):-1;
- const selectedEvents=selected?allEvents.filter(e=>dateKey(e.date)===dateKey(selected.date)):[];
- const handleWheel=(e:WheelEvent<SVGSVGElement>)=>{e.preventDefault();setZoom(z=>Math.max(1,Math.min(12,z+(e.deltaY<0?1:-1))))};
- const handlePointerDown=(e:PointerEvent<SVGSVGElement>)=>{(e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId);setDrag({x:e.clientX,pan});};
- const handlePointerMove=(e:PointerEvent<SVGSVGElement>)=>{if(!drag)return;const delta=(drag.x-e.clientX)/Math.max(1,plotW)*visibleCount;setPan(drag.pan+delta);};
+  const flowEvents:{date:Date,type:"income"|"expense";amount:number}[]=[];
+  flows.forEach(f=>eventDates(f,start,end).forEach(d=>flowEvents.push({date:d,type:f.flow_type,amount:Math.max(0,Number(f.amount||0))})));
+  eodEntries.forEach(e=>{const d=dateOnly(e.entry_date);if(d>=start&&d<=end)flowEvents.push({date:d,type:"expense",amount:Math.max(0,Number(e.amount||0))})});
+  const actualAt=(date:Date)=>{
+   let income=0,expense=0,invested=0;
+   flowEvents.forEach(e=>{if(e.date<=date)e.type==="income"?income+=e.amount:expense+=e.amount});
+   contributionByDay.forEach((v,k)=>{if(new Date(\`\${k}T00:00:00\`)<=date)invested+=v});
+   const portfolio=investments.reduce((s,i)=>s+currentValue(i,date),0);
+   return Math.max(0,startingCapital+income-expense-invested+portfolio);
+  };
+  const rawDates:Date[]=[];
+  for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1))rawDates.push(new Date(d));
+  const raw=rawDates.map(date=>{
+   const actualRaw=contributionByDay.get(dateKey(date))||0;
+   const goalValue=actualAt(date);
+   const gap=Math.max(0,target-goalValue);
+   const days=Math.max(1,Math.ceil((planTargetDate.getTime()-date.getTime())/86400000));
+   const required=planTargetDate<=date?gap:gap/days;
+   return {date,required,actualRaw,goalValue,gap};
+  });
+  return raw.map((p,i)=>{
+   const from=Math.max(0,i-29);
+   const window=raw.slice(from,i+1);
+   return {...p,actual:window.reduce((s,x)=>s+x.actualRaw,0)/window.length};
+  });
+ },[historyStart,today.toDateString(),investments,flows,eodEntries,target,startingCapital,planTargetDate.toDateString()]);
+
+ const visible=useMemo(()=>{
+  if(range==="Day")return allDaily.slice(-30);
+  if(range==="Month")return allDaily.slice(-180);
+  if(range==="Year")return allDaily.slice(-730);
+  return allDaily;
+ },[range,allDaily]);
+
+ const visibleCount=Math.max(10,Math.round(visible.length/zoom));
+ const maxOffset=Math.max(0,visible.length-visibleCount);
+ const offset=Math.max(0,Math.min(maxOffset,Math.round(pan)));
+ const points=visible.slice(offset,offset+visibleCount);
+ const maxValue=Math.max(1,...points.flatMap(p=>[p.required,p.actual]));
+ const yFor=(v:number)=>top+plotH-(Math.max(0,Math.min(maxValue,v))/maxValue)*plotH;
+ const xFor=(i:number)=>left+(points.length<=1?0:i/(points.length-1)*plotW);
+ const pathFor=(key:"required"|"actual")=>points.map((p,i)=>\`\${i?"L":"M"}\${xFor(i)},\${yFor(p[key])}\`).join(" ");
+ const formatDate=(d:Date)=>range==="Day"?d.toLocaleDateString("en-IN",{day:"numeric",month:"short"}):range==="Year"?d.toLocaleDateString("en-IN",{month:"short",year:"numeric"}):d.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"2-digit"});
+ const selectedIndex=selected?points.findIndex(p=>dateKey(p.date)===dateKey(selected.date)):-1;
+ const yLabels=[0,.25,.5,.5+.25,.999].map(q=>Math.round(maxValue*q));
+ const handleWheel=(e:WheelEvent<SVGSVGElement>)=>{e.preventDefault();setZoom(z=>Math.max(1,Math.min(20,z+(e.deltaY<0?1:-1))))};
+ const handlePointerDown=(e:PointerEvent<SVGSVGElement>)=>{e.currentTarget.setPointerCapture(e.pointerId);setDrag({x:e.clientX,pan})};
+ const handlePointerMove=(e:PointerEvent<SVGSVGElement>)=>{if(!drag)return;const delta=(drag.x-e.clientX)/Math.max(1,plotW)*visibleCount;setPan(Math.max(0,Math.min(maxOffset,drag.pan+delta)))};
  const handlePointerUp=()=>setDrag(null);
- const formatDate=(d:Date)=>range==="Day"?d.toLocaleDateString("en-IN",{day:"numeric",month:"short"}):range==="Month"?d.toLocaleDateString("en-IN",{month:"short",year:"2-digit"}):d.toLocaleDateString("en-IN",{year:"numeric"});
- const yLabels=[0,.25,.5,.75,1].map(q=>Math.round(maxValue*q));
+ const current=allDaily.at(-1);
+ const avgActual=current?.actual??0;
+ const requiredNow=current?.required??0;
+
  return <div className="mt-4 rounded-2xl bg-slate-50 p-4">
-  <div className="flex flex-wrap items-center justify-between gap-3">
-   <div><p className="text-sm font-black">Goal history & projection</p><p className="mt-0.5 text-[11px] text-slate-500">Actual includes income, expenses, investment contributions and portfolio value.</p></div>
-   <div className="flex flex-wrap items-center gap-1 rounded-xl border border-slate-200 bg-white p-1" role="group" aria-label="Chart time range">{(["Day","Month","Year","All"] as ChartRange[]).map(v=><button key={v} type="button" onClick={()=>{setRange(v);setPan(0);setSelected(null)}} className={`rounded-lg px-2.5 py-1.5 text-xs font-bold ${range===v?"bg-slate-900 text-white":"text-slate-500 hover:bg-slate-100"}`}>{v}</button>)}</div>
+  <div className="flex flex-wrap items-start justify-between gap-3">
+   <div><p className="text-sm font-black">Daily contribution required to reach your goal</p><p className="mt-1 max-w-2xl text-[11px] leading-5 text-slate-500">🟠 Required = remaining goal gap divided by days left to the projected goal date. 🟢 Actual = your 30-day average daily investment contribution.</p></div>
+   <div className="flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1" role="group" aria-label="Contribution timeline">{(["Day","Month","Year","All"] as ChartRange[]).map(v=><button key={v} type="button" onClick={()=>{setRange(v);setZoom(1);setPan(0);setSelected(null)}} className={\`rounded-lg px-2.5 py-1.5 text-xs font-bold \${range===v?"bg-slate-900 text-white":"text-slate-500 hover:bg-slate-100"}\`}>{v}</button>)}</div>
   </div>
   <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] font-bold">
-   <span className="inline-flex items-center gap-1.5"><i className="size-2.5 rounded-full bg-emerald-500"/>Actual</span><span className="inline-flex items-center gap-1.5"><i className="size-2.5 rounded-full bg-blue-500"/>Plan</span><span className="inline-flex items-center gap-1.5"><i className="size-2.5 rounded-full bg-violet-500"/>Target</span>
-   <button type="button" onClick={()=>setShowEvents(v=>!v)} className="ml-auto rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold">{showEvents?"Hide":"Show"} data details</button><button type="button" onClick={()=>{setZoom(1);setPan(0);setSelected(null)}} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold">Fit</button>
+   <span className="inline-flex items-center gap-1.5"><i className="size-2.5 rounded-full bg-orange-500"/>Required / day</span>
+   <span className="inline-flex items-center gap-1.5"><i className="size-2.5 rounded-full bg-emerald-500"/>Actual / day (30-day avg)</span>
+   <span className="ml-auto rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px]">Goal date: <b>{dateText(planTargetDate)}</b></span>
+   <button type="button" onClick={()=>{setZoom(1);setPan(0)}} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold">Fit</button>
   </div>
   <div className="mt-2 overflow-x-auto rounded-xl bg-white p-2">
-   <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[720px] h-auto w-full select-none touch-none" aria-label={`Interactive goal chart ${range} view`} onWheel={handleWheel} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
-    {yLabels.map((v,i)=><g key={v}><line x1={left} x2={width-right} y1={plotY(v)} y2={plotY(v)} stroke="#e5e7eb"/><text x={left-8} y={plotY(v)+4} textAnchor="end" fontSize="10" fill="#64748b">{money(v)}</text></g>)}
-    <line x1={left} x2={width-right} y1={plotY(target)} y2={plotY(target)} stroke="#8b5cf6" strokeDasharray="7 6" strokeWidth="2"/><text x={width-right} y={plotY(target)-7} textAnchor="end" fontSize="10" fontWeight="700" fill="#7c3aed">Target {money(target)}</text>
-    <path d={pathFor(visiblePlan)} fill="none" stroke="#3b82f6" strokeWidth="3" strokeDasharray="7 5" strokeLinecap="round"/><path d={pathFor(visible)} fill="none" stroke="#10b981" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
-    {visible.map((p,i)=><circle key={dateKey(p.date)} cx={xFor(i)} cy={plotY(p.value)} r={selectedIndex===i?6:3.5} fill="#10b981" stroke="white" strokeWidth="2" onPointerDown={e=>{e.stopPropagation();setSelected(p)}}/>)}
-    {selected&&selectedIndex>=0&&<><line x1={xFor(selectedIndex)} x2={xFor(selectedIndex)} y1={top} y2={top+plotH} stroke="#94a3b8" strokeDasharray="4 4"/><rect x={Math.min(width-210,Math.max(left+4,xFor(selectedIndex)-95))} y={top+5} width="200" height="56" rx="10" fill="white" stroke="#cbd5e1"/><text x={Math.min(width-115,Math.max(left+99,xFor(selectedIndex)))} y={top+24} textAnchor="middle" fontSize="11" fontWeight="700" fill="#0f172a">{dateText(selected.date)}</text><text x={Math.min(width-115,Math.max(left+99,xFor(selectedIndex)))} y={top+43} textAnchor="middle" fontSize="11" fill="#059669">Actual {money(selected.value)}</text></>}
-    {visible.map((p,i)=><text key={`x-${dateKey(p.date)}`} x={xFor(i)} y={height-18} textAnchor={i===0?"start":i===visible.length-1?"end":"middle"} fontSize="9" fill="#64748b">{i===0||i===visible.length-1||range==="Day"?formatDate(p.date):i%Math.max(1,Math.floor(visible.length/6))===0?formatDate(p.date):""}</text>)}
+   <svg viewBox={\`0 0 \${width} \${height}\`} className="min-w-[760px] h-auto w-full select-none touch-none" aria-label={\`Daily contribution chart \${range} view\`} onWheel={handleWheel} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
+    {yLabels.map(v=><g key={v}><line x1={left} x2={width-right} y1={yFor(v)} y2={yFor(v)} stroke="#e5e7eb"/><text x={left-10} y={yFor(v)+4} textAnchor="end" fontSize="10" fill="#64748b">{money(v)}</text></g>)}
+    <text x="16" y={top+plotH/2} transform={\`rotate(-90 16 \${top+plotH/2})\`} textAnchor="middle" fontSize="10" fontWeight="700" fill="#64748b">Amount / day</text>
+    <path d={pathFor("required")} fill="none" stroke="#f97316" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d={pathFor("actual")} fill="none" stroke="#10b981" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"/>
+    {points.map((p,i)=><circle key={dateKey(p.date)} cx={xFor(i)} cy={yFor(p.required)} r={selectedIndex===i?5.5:2.5} fill="#f97316" stroke="white" strokeWidth="1.5" onPointerDown={e=>{e.stopPropagation();setSelected(p)}}/>)}
+    {selected&&selectedIndex>=0&&<><line x1={xFor(selectedIndex)} x2={xFor(selectedIndex)} y1={top} y2={top+plotH} stroke="#94a3b8" strokeDasharray="4 4"/><rect x={Math.min(width-230,Math.max(left+4,xFor(selectedIndex)-105))} y={top+5} width="220" height="86" rx="10" fill="white" stroke="#cbd5e1"/><text x={Math.min(width-120,Math.max(left+114,xFor(selectedIndex)))} y={top+23} textAnchor="middle" fontSize="10" fontWeight="700" fill="#0f172a">{formatDate(selected.date)}</text><text x={Math.min(width-120,Math.max(left+114,xFor(selectedIndex)))} y={top+44} textAnchor="middle" fontSize="10" fill="#ea580c">Required {money(selected.required)}/day</text><text x={Math.min(width-120,Math.max(left+114,xFor(selectedIndex)))} y={top+63} textAnchor="middle" fontSize="10" fill="#059669">Actual {money(selected.actual)}/day</text><text x={Math.min(width-120,Math.max(left+114,xFor(selectedIndex)))} y={top+81} textAnchor="middle" fontSize="9" fill="#64748b">Goal gap {money(selected.gap)}</text></>}
+    {points.map((p,i)=><text key={\`x-\${dateKey(p.date)}\`} x={xFor(i)} y={height-18} textAnchor={i===0?"start":i===points.length-1?"end":"middle"} fontSize="9" fill="#64748b">{i===0||i===points.length-1||range==="Day"?formatDate(p.date):i%Math.max(1,Math.floor(points.length/7))===0?formatDate(p.date):""}</text>)}
     <line x1={left} x2={width-right} y1={top+plotH} y2={top+plotH} stroke="#94a3b8"/><line x1={left} x2={left} y1={top} y2={top+plotH} stroke="#94a3b8"/>
    </svg>
   </div>
-  <div className="mt-3 grid gap-2 sm:grid-cols-4"><div className="rounded-xl bg-white p-3"><p className="text-[10px] text-slate-400">Actual</p><p className="mt-1 font-black">{money(visible.at(-1)?.value??0)}</p></div><div className="rounded-xl bg-white p-3"><p className="text-[10px] text-slate-400">Portfolio</p><p className="mt-1 font-black">{money(visible.at(-1)?.portfolio??0)}</p></div><div className="rounded-xl bg-white p-3"><p className="text-[10px] text-slate-400">Net cash</p><p className="mt-1 font-black">{money(visible.at(-1)?.netCash??0)}</p></div><div className="rounded-xl bg-white p-3"><p className="text-[10px] text-slate-400">Plan variance</p><p className={`mt-1 font-black ${((visible.at(-1)?.value??0)-(visiblePlan.at(-1)?.value??0))>=0?"text-emerald-700":"text-rose-700"}`}>{money((visible.at(-1)?.value??0)-(visiblePlan.at(-1)?.value??0))}</p></div></div>
-  {selected&&showEvents&&<section className="mt-3 rounded-xl border border-slate-200 bg-white p-4"><div className="flex flex-wrap items-end justify-between gap-2"><div><p className="text-xs font-black uppercase tracking-wider text-slate-400">Selected date</p><h3 className="text-lg font-black">{dateText(selected.date)}</h3></div><div className="text-right"><p className="text-xs text-slate-400">Actual</p><p className="text-xl font-black">{money(selected.value)}</p></div></div><div className="mt-3 overflow-x-auto"><table className="min-w-[650px] w-full text-left text-xs"><thead className="bg-slate-50 text-[10px] uppercase text-slate-500"><tr><th className="px-3 py-2">Data</th><th className="px-3 py-2">Type</th><th className="px-3 py-2 text-right">Amount</th><th className="px-3 py-2">Note</th></tr></thead><tbody className="divide-y divide-slate-100">{selectedEvents.length?selectedEvents.map(e=><tr key={e.id}><td className="px-3 py-2 font-bold">{e.label}</td><td className="px-3 py-2">{e.type==="income"?"Income":e.type==="expense"?"Expense":"Investment"}</td><td className={`px-3 py-2 text-right font-black ${e.type==="income"?"text-emerald-700":e.type==="expense"?"text-rose-700":"text-blue-700"}`}>{e.type==="income"?"+":e.type==="expense"?"−":"Invest "}{money(e.amount)}</td><td className="px-3 py-2 text-slate-500">{e.note||"—"}</td></tr>):<tr><td colSpan={4} className="px-3 py-5 text-center text-slate-500">No financial events recorded on this date.</td></tr>}</tbody></table></div><p className="mt-3 text-[11px] text-slate-400">Actual = starting capital + cumulative income − cumulative expenses − cumulative investment contributions + investment portfolio value.</p></section>}
+  <div className="mt-3 grid gap-2 sm:grid-cols-4">
+   <div className="rounded-xl bg-white p-3"><p className="text-[10px] text-slate-400">Required today</p><p className="mt-1 font-black">{money(requiredNow)}/day</p></div>
+   <div className="rounded-xl bg-white p-3"><p className="text-[10px] text-slate-400">Actual daily average</p><p className="mt-1 font-black">{money(avgActual)}/day</p></div>
+   <div className="rounded-xl bg-white p-3"><p className="text-[10px] text-slate-400">Gap today</p><p className="mt-1 font-black">{money(Math.max(0,(current?.gap??target)))}</p></div>
+   <div className="rounded-xl bg-white p-3"><p className="text-[10px] text-slate-400">Projected goal date</p><p className="mt-1 font-black">{dateText(planTargetDate)}</p></div>
+  </div>
+  {selected&&<div className="mt-3 rounded-xl border border-slate-200 bg-white p-4 text-xs"><div className="flex flex-wrap justify-between gap-2"><b>{formatDate(selected.date)}</b><span>Required <b className="text-orange-600">{money(selected.required)}/day</b> · Actual <b className="text-emerald-600">{money(selected.actual)}/day</b></span></div><p className="mt-2 text-slate-500">The actual line is a rolling 30-day average, so monthly investment contributions are converted into a comparable daily pace instead of appearing as isolated spikes.</p></div>}
  </div>
 }
 export default function GoalShell(){
@@ -131,7 +150,7 @@ export default function GoalShell(){
 <Link href="/goal/loans" className="group rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 hover:ring-slate-300"><Banknote className="text-rose-600"/><h2 className="mt-3 font-black">Loans</h2><p className="mt-1 text-xs text-slate-500">Track principal, interest, maturity and status.</p><span className="mt-3 inline-block text-xs font-bold text-rose-700">Manage →</span></Link>
 <Link href="/goal/insights/editable" className="group rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 hover:ring-slate-300"><Target className="text-slate-700"/><h2 className="mt-3 font-black">Insights</h2><p className="mt-1 text-xs text-slate-500">Drill into projection, surplus and month-by-month data.</p><span className="mt-3 inline-block text-xs font-bold text-slate-700">Open →</span></Link><Link href="/goal/expenses" className="group rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 hover:ring-slate-300"><ReceiptText className="text-rose-600"/><h2 className="mt-3 font-black">Daily expenses</h2><p className="mt-1 text-xs text-slate-500">Record, edit and delete one-time spending.</p><span className="mt-3 inline-block text-xs font-bold text-rose-700">Manage →</span></Link><Link href="/goal/settings" className="group rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 hover:ring-slate-300"><WalletCards className="text-slate-700"/><h2 className="mt-3 font-black">Settings</h2><p className="mt-1 text-xs text-slate-500">Edit target, starting capital, reserve and planning assumptions.</p><span className="mt-3 inline-block text-xs font-bold text-slate-700">Configure →</span></Link>
 </section>
-<section className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-100 sm:p-8"><div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-slate-400">Financial Goal · Wallet</p><h1 className="mt-1 text-3xl font-black">{money(target)}</h1><p className="mt-2 text-sm text-slate-500">Your target is editable. All projection calculations use the saved target.</p><div className="mt-5 flex flex-wrap items-center gap-2"><input inputMode="numeric" value={targetInput} onChange={e=>setTargetInput(e.target.value.replace(/[^0-9]/g,""))} className="w-44 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-bold outline-none"/><button disabled={saving} onClick={saveTarget} className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white">{saving?"Saving…":"Set target"}</button>{message&&<span className="text-xs font-semibold text-emerald-700">{message}</span>}</div></div><div className="grid size-32 shrink-0 place-items-center rounded-full bg-slate-100 ring-8 ring-slate-50"><div className="grid size-24 place-items-center rounded-full border-[10px] border-violet-600 bg-white text-center"><span className="text-2xl font-black">{progress.toFixed(1)}%</span></div></div></div><div className="mt-7 grid gap-3 sm:grid-cols-4"><div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-400">Current value</p><p className="mt-1 text-xl font-black">{money(current)}</p></div><div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-400">Remaining</p><p className="mt-1 text-xl font-black">{money(Math.max(target-current,0))}</p></div><button type="button" onClick={()=>{setSurplusView("net");setShowSurplus(true)}} className="rounded-2xl bg-slate-50 p-4 text-left transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-300"><p className="text-xs text-slate-400">Monthly surplus</p><p className="mt-1 text-xl font-black">{money(surplus)}</p><p className="mt-1 text-[11px] font-semibold text-violet-600">Tap to see breakdown →</p></button><div className="rounded-2xl bg-violet-50 p-4"><p className="text-xs text-violet-600">Reach</p><p className="mt-1 text-xl font-black">{current>=target?"Goal reached":reach?dateText(reach.date):"Not reached"}</p></div></div><GoalTrendChart investments={investments} flows={flows} eodEntries={eodEntries} projection={points} target={target} today={today} startingCapital={startingCapital}/></section>
+<section className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-100 sm:p-8"><div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-slate-400">Financial Goal · Wallet</p><h1 className="mt-1 text-3xl font-black">{money(target)}</h1><p className="mt-2 text-sm text-slate-500">Your target is editable. All projection calculations use the saved target.</p><div className="mt-5 flex flex-wrap items-center gap-2"><input inputMode="numeric" value={targetInput} onChange={e=>setTargetInput(e.target.value.replace(/[^0-9]/g,""))} className="w-44 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-bold outline-none"/><button disabled={saving} onClick={saveTarget} className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white">{saving?"Saving…":"Set target"}</button>{message&&<span className="text-xs font-semibold text-emerald-700">{message}</span>}</div></div><div className="grid size-32 shrink-0 place-items-center rounded-full bg-slate-100 ring-8 ring-slate-50"><div className="grid size-24 place-items-center rounded-full border-[10px] border-violet-600 bg-white text-center"><span className="text-2xl font-black">{progress.toFixed(1)}%</span></div></div></div><div className="mt-7 grid gap-3 sm:grid-cols-4"><div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-400">Current value</p><p className="mt-1 text-xl font-black">{money(current)}</p></div><div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-400">Remaining</p><p className="mt-1 text-xl font-black">{money(Math.max(target-current,0))}</p></div><button type="button" onClick={()=>{setSurplusView("net");setShowSurplus(true)}} className="rounded-2xl bg-slate-50 p-4 text-left transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-300"><p className="text-xs text-slate-400">Monthly surplus</p><p className="mt-1 text-xl font-black">{money(surplus)}</p><p className="mt-1 text-[11px] font-semibold text-violet-600">Tap to see breakdown →</p></button><div className="rounded-2xl bg-violet-50 p-4"><p className="text-xs text-violet-600">Reach</p><p className="mt-1 text-xl font-black">{current>=target?"Goal reached":reach?dateText(reach.date):"Not reached"}</p></div></div><GoalContributionChart investments={investments} flows={flows} eodEntries={eodEntries} projection={points} target={target} today={today} startingCapital={startingCapital}/></section>
  {showSurplus&&<div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4" role="dialog" aria-modal="true" aria-labelledby="surplus-title"><section className="max-h-[85vh] w-full max-w-3xl overflow-hidden rounded-[2rem] bg-white shadow-2xl"><div className="flex items-center justify-between border-b border-slate-100 p-5"><div><h2 id="surplus-title" className="text-xl font-black">Monthly surplus breakdown</h2><p className="mt-1 text-sm text-slate-500">Here is exactly what is contributing to your current monthly surplus.</p></div><button type="button" onClick={()=>setShowSurplus(false)} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold">Close</button></div><div className="max-h-[65vh] overflow-y-auto p-5"><div className="grid gap-3 sm:grid-cols-3"><button type="button" onClick={()=>setSurplusView("income")} className={`rounded-2xl p-4 text-left ${surplusView==="income"?"bg-emerald-100 ring-2 ring-emerald-300":"bg-emerald-50"}`}><p className="text-xs text-emerald-700">Monthly income</p><p className="mt-1 text-xl font-black">{money(active.filter(a=>a.flow_type==="income").reduce((s,a)=>s+recurringMonthly(a),0))}</p><p className="mt-1 text-[11px] font-semibold text-emerald-700">Show income only →</p></button><button type="button" onClick={()=>setSurplusView("expense")} className={`rounded-2xl p-4 text-left ${surplusView==="expense"?"bg-rose-100 ring-2 ring-rose-300":"bg-rose-50"}`}><p className="text-xs text-rose-700">Monthly expenses</p><p className="mt-1 text-xl font-black">{money(active.filter(a=>a.flow_type==="expense").reduce((s,a)=>s+recurringMonthly(a),0))}</p><p className="mt-1 text-[11px] font-semibold text-rose-700">Show expenses only →</p></button><button type="button" onClick={()=>setSurplusView("net")} className={`rounded-2xl p-4 text-left ${surplusView==="net"?"bg-violet-100 ring-2 ring-violet-300":"bg-violet-50"}`}><p className="text-xs text-violet-700">Net surplus</p><p className="mt-1 text-xl font-black">{money(surplus)}</p><p className="mt-1 text-[11px] font-semibold text-violet-700">Show surplus source →</p></button></div><div className="mt-5 overflow-x-auto rounded-2xl border border-slate-200"><table className="min-w-[620px] w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Source / entry</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Frequency</th><th className="px-4 py-3 text-right">Monthly impact</th></tr></thead><tbody className="divide-y divide-slate-100">{(()=>{const income=active.filter(a=>a.flow_type==="income"),expenses=active.filter(a=>a.flow_type==="expense");const rows=surplusView==="income"?income:surplusView==="expense"?expenses:active;return rows.length?rows.map((a,i)=><tr key={`${a.flow_date}-${i}`}><td className="px-4 py-3 font-bold">{(a as GoalActivity & {name?:string;description?:string;category?:string}).name||(a as GoalActivity & {description?:string}).description||(a as GoalActivity & {category?:string}).category||"Recurring cash flow"}</td><td className="px-4 py-3">{a.flow_type==="income"?"Income":"Expense"}</td><td className="px-4 py-3 text-slate-600">{a.recurrence||"Monthly"}</td><td className={`px-4 py-3 text-right font-black ${a.flow_type==="income"?"text-emerald-700":"text-rose-700"}`}>{a.flow_type==="income"?"+":"−"}{money(recurringMonthly(a))}</td></tr>):<tr><td colSpan={4} className="px-4 py-8 text-center text-slate-500">No entries in this category.</td></tr>})()}</tbody></table></div><p className="mt-4 text-xs text-slate-400">{surplusView==="income"?"Income contributing to the monthly surplus.":surplusView==="expense"?"Expenses reducing the monthly surplus.":"Net surplus is calculated as monthly recurring income minus monthly recurring expenses. The table above shows the cash flows used in that calculation."}</p></div></section></div>} <div className="mt-4 grid gap-4 sm:grid-cols-3"><Link href="/goal/insights/editable" className="rounded-[1.6rem] bg-white p-5 shadow-sm ring-1 ring-slate-100"><Target className="text-violet-600"/><h2 className="mt-4 text-lg font-black">Growth Path</h2><p className="mt-1 text-sm text-slate-500">See the full projection and milestone timeline.</p></Link><Link href="/goal/insights/editable" className="rounded-[1.6rem] bg-white p-5 shadow-sm ring-1 ring-slate-100"><TrendingUp className="text-emerald-600"/><h2 className="mt-4 text-lg font-black">Reinvestment</h2><p className="mt-1 text-sm text-slate-500">See maturity proceeds and recurring surplus.</p></Link><Link href="/goal/insights/editable" className="rounded-[1.6rem] bg-white p-5 shadow-sm ring-1 ring-slate-100"><WalletCards className="text-slate-500"/><h2 className="mt-4 text-lg font-black">Wallet Control Center</h2><p className="mt-1 text-sm text-slate-500">Detailed projection and month-end controls.</p></Link></div>
  <section className="mt-4 rounded-[1.6rem] bg-white p-5 shadow-sm ring-1 ring-slate-100"><div className="flex items-end justify-between gap-3"><div><h2 className="text-lg font-black">Investments</h2><p className="mt-1 text-sm text-slate-500">A clear view of every goal-linked investment and its current calculated value.</p></div><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{investments.length} entries</span></div><div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200"><table className="min-w-[900px] w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Investment</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Principal</th><th className="px-4 py-3">Rate</th><th className="px-4 py-3">Invested</th><th className="px-4 py-3">Maturity</th><th className="px-4 py-3 text-right">Current value</th></tr></thead><tbody className="divide-y divide-slate-100">{investments.length?investments.map(i=><tr key={i.id} className="hover:bg-slate-50"><td className="px-4 py-3 font-bold">{i.name}</td><td className="px-4 py-3 text-slate-600">{i.investment_type}</td><td className="px-4 py-3">{money(Number(i.principal_amount||0))}</td><td className="px-4 py-3">{Number(i.expected_rate||0)}% {i.rate_period}</td><td className="px-4 py-3 whitespace-nowrap">{i.invested_on}</td><td className="px-4 py-3 whitespace-nowrap">{i.maturity_on||"—"}</td><td className="px-4 py-3 text-right font-black">{money(currentValue(i,today))}<Link href="/goal/investments" className="ml-3 text-xs font-bold text-violet-700">Edit →</Link></td></tr>):<tr><td colSpan={7} className="px-4 py-8 text-center text-slate-500">No goal investments saved yet.</td></tr>}</tbody></table></div></section>
  </div></main>;
