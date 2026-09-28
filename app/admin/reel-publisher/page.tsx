@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase-browser";
 
 const DEFAULT_HASHTAGS = ["#TeluguTrolls", "#TeluguTroll", "#TeluguMemes", "#TeluguComedy", "#TeluguFunny"];
@@ -41,7 +41,6 @@ function formatDate(value: string | null) {
 }
 
 export default function ReelPublisherPage() {
-  const supabase = useMemo(() => createClient(), []);
   const [urls, setUrls] = useState("");
   const [items, setItems] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,14 +48,18 @@ export default function ReelPublisherPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  function getSupabase() {
+    return createClient();
+  }
+
   async function load() {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSupabase().auth.getUser();
     if (!user) {
       window.location.href = "/login?next=/admin/reel-publisher";
       return;
     }
-    const { data, error: loadError } = await supabase
+    const { data, error: loadError } = await getSupabase()
       .from("reel_youtube_queue")
       .select("id,instagram_url,status,queue_position,scheduled_at,youtube_url,hashtags,created_at,error_message")
       .eq("user_id", user.id)
@@ -79,7 +82,7 @@ export default function ReelPublisherPage() {
     }
 
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSupabase().auth.getUser();
     if (!user) {
       window.location.href = "/login?next=/admin/reel-publisher";
       return;
@@ -116,7 +119,7 @@ export default function ReelPublisherPage() {
       hashtags: DEFAULT_HASHTAGS,
     }));
 
-    const { error: insertError } = await supabase.from("reel_youtube_queue").insert(rows);
+    const { error: insertError } = await getSupabase().from("reel_youtube_queue").insert(rows);
     if (insertError) {
       setError(insertError.code === "23505" ? "One or more Reels are duplicates. Nothing was duplicated." : insertError.message);
     } else {
@@ -129,7 +132,7 @@ export default function ReelPublisherPage() {
 
   async function remove(id: string) {
     setError("");
-    const { error: deleteError } = await supabase.from("reel_youtube_queue").delete().eq("id", id);
+    const { error: deleteError } = await getSupabase().from("reel_youtube_queue").delete().eq("id", id);
     if (deleteError) setError(deleteError.message);
     else await load();
   }
