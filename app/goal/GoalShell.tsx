@@ -85,7 +85,7 @@ function GoalTrendChart({investments,flows,eodEntries,projection,target,today,st
  const selectedEvents=selected?allEvents.filter(e=>dateKey(e.date)===dateKey(selected.date)):[];
  const handleWheel=(e:WheelEvent<SVGSVGElement>)=>{e.preventDefault();setZoom(z=>Math.max(1,Math.min(12,z+(e.deltaY<0?1:-1))))};
  const handlePointerDown=(e:PointerEvent<SVGSVGElement>)=>{(e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId);setDrag({x:e.clientX,pan});};
- const handlePointerMove=(e:React.PointerEvent<SVGSVGElement>)=>{if(!drag)return;const delta=(drag.x-e.clientX)/Math.max(1,plotW)*visibleCount;setPan(drag.pan+delta);};
+ const handlePointerMove=(e:PointerEvent<SVGSVGElement>)=>{if(!drag)return;const delta=(drag.x-e.clientX)/Math.max(1,plotW)*visibleCount;setPan(drag.pan+delta);};
  const handlePointerUp=()=>setDrag(null);
  const formatDate=(d:Date)=>range==="Day"?d.toLocaleDateString("en-IN",{day:"numeric",month:"short"}):range==="Month"?d.toLocaleDateString("en-IN",{month:"short",year:"2-digit"}):d.toLocaleDateString("en-IN",{year:"numeric"});
  const yLabels=[0,.25,.5,.75,1].map(q=>Math.round(maxValue*q));
