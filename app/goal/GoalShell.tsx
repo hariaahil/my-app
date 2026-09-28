@@ -1,4 +1,4 @@
-`use client`;
+"use client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { LogIn, RefreshCw, Target, TrendingUp, WalletCards } from "lucide-react";
