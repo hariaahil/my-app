@@ -8,7 +8,7 @@ import { DEFAULT_GOAL_TARGET, currentValue, projectGoal, recurringMonthly, isAct
 const money=(n:number)=>`₹${Math.round(Math.max(0,n)).toLocaleString("en-IN")}`;
 const dateText=(d:Date)=>d.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});
 
-type ChartRange="Day"|"Month"|"Year"|"All";
+type ChartRange="Day"|"Month"|"Year"|"All"|"Custom";
 type ContributionPoint={date:Date;required:number;actual:number;actualRaw:number;goalValue:number;gap:number};
 type CashFlow={id:string;flow_type:"income"|"expense";amount:number;source:string|null;flow_date:string;note:string|null;is_recurring:boolean;recurrence:string;recurrence_end:string|null;category:string|null};
 type EodEntry={id:string;entry_date:string;category:string;amount:number;note:string|null};
@@ -27,6 +27,8 @@ const eventDates=(flow:CashFlow,from:Date,to:Date)=>{
 
 function GoalContributionChart({investments,flows,eodEntries,projection,target,today,startingCapital}:{investments:GoalInvestment[];flows:CashFlow[];eodEntries:EodEntry[];projection:{date:Date;value:number}[];target:number;today:Date;startingCapital:number}){
  const [range,setRange]=useState<ChartRange>("Month");
+ const [customStart,setCustomStart]=useState("");
+ const [customEnd,setCustomEnd]=useState("");
  const [zoom,setZoom]=useState(1);
  const [pan,setPan]=useState(0);
  const [selected,setSelected]=useState<ContributionPoint|null>(null);
@@ -76,8 +78,15 @@ function GoalContributionChart({investments,flows,eodEntries,projection,target,t
   if(range==="Day")return historical.slice(-30);
   if(range==="Month")return historical.slice(-180);
   if(range==="Year")return historical.slice(-730);
+  if(range==="Custom"){
+   const start=customStart?new Date(customStart+"T00:00:00"):historyStart;
+   const end=customEnd?new Date(customEnd+"T00:00:00"):today;
+   const lo=start<=end?start:end;
+   const hi=start<=end?end:start;
+   return allDaily.filter(p=>p.date>=lo&&p.date<=hi);
+  }
   return allDaily;
- },[range,allDaily,today.toDateString()]);
+ },[range,allDaily,today.toDateString(),customStart,customEnd,historyStart]);
  const visibleCount=Math.max(10,Math.round(visible.length/zoom));
  const maxOffset=Math.max(0,visible.length-visibleCount);
  const offset=Math.max(0,Math.min(maxOffset,Math.round(pan)));
@@ -87,6 +96,7 @@ function GoalContributionChart({investments,flows,eodEntries,projection,target,t
  const xFor=(i:number)=>left+(points.length<=1?0:i/(points.length-1)*plotW);
  const pathFor=(key:"required"|"actual")=>points.map((p,i)=>(i?"L":"M")+xFor(i)+","+yFor(p[key])).join(" ");
  const formatDate=(d:Date)=>range==="Day"?d.toLocaleDateString("en-IN",{day:"numeric",month:"short"}):d.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"2-digit"});
+ const defaultCustomStart=dateKey(historyStart),defaultCustomEnd=dateKey(today);
  const selectedIndex=selected?points.findIndex(p=>dateKey(p.date)===dateKey(selected.date)):-1;
  const yLabels=[0,.25,.5,.75,1].map(q=>Math.round(maxValue*q));
  const handleWheel=(e:WheelEvent<SVGSVGElement>)=>{e.preventDefault();setZoom(z=>Math.max(1,Math.min(20,z+(e.deltaY<0?1:-1))))};
@@ -101,7 +111,7 @@ function GoalContributionChart({investments,flows,eodEntries,projection,target,t
  const actualNow=current?.actual??0,requiredNow=current?.required??0,actualVsRequired=actualNow-requiredNow;
  return <div className="mt-4 rounded-2xl bg-slate-50 p-4">
   <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-black">Contribution progress toward your goal</p><p className="mt-1 max-w-2xl text-[11px] leading-5 text-slate-500">🟠 Required trajectory = cumulative contribution pace needed to reach the target by the projected date. 🟢 Actual = your cumulative recorded investment contributions.</p></div>
-   <div className="flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1" role="group" aria-label="Contribution timeline">{(["Day","Month","Year","All"] as ChartRange[]).map(v=><button key={v} type="button" onClick={()=>{setRange(v);setZoom(1);setPan(0);setSelected(null)}} className={"rounded-lg px-2.5 py-1.5 text-xs font-bold "+(range===v?"bg-slate-900 text-white":"text-slate-500 hover:bg-slate-100")}>{v}</button>)}</div>
+   <div className="flex flex-wrap items-center gap-1 rounded-xl border border-slate-200 bg-white p-1" role="group" aria-label="Contribution timeline">{(["Day","Month","Year","All","Custom"] as ChartRange[]).map(v=><button key={v} type="button" onClick={()=>{setRange(v);setZoom(1);setPan(0);setSelected(null);if(v==="Custom"){if(!customStart)setCustomStart(defaultCustomStart);if(!customEnd)setCustomEnd(defaultCustomEnd)}}} className={"rounded-lg px-2.5 py-1.5 text-xs font-bold "+(range===v?"bg-slate-900 text-white":"text-slate-500 hover:bg-slate-100")}>{v}</button>)}</div>
   </div>
   <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] font-bold"><span className="inline-flex items-center gap-1.5"><i className="size-2.5 rounded-full bg-orange-500"/>Required cumulative</span><span className="inline-flex items-center gap-1.5"><i className="size-2.5 rounded-full bg-emerald-500"/>Actual cumulative</span><span className="ml-auto rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px]">Goal: <b>{money(target)}</b> · Target date: <b>{dateText(planTargetDate)}</b></span><div className="ml-auto flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1">
     <button type="button" aria-label="Zoom out" onClick={zoomOut} disabled={zoom===1} className="grid size-8 place-items-center rounded-md text-base font-black text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30">−</button>
@@ -109,6 +119,11 @@ function GoalContributionChart({investments,flows,eodEntries,projection,target,t
     <button type="button" aria-label="Zoom in" onClick={zoomIn} disabled={zoom===20} className="grid size-8 place-items-center rounded-md text-base font-black text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30">+</button>
     <button type="button" onClick={resetView} className="rounded-md px-2 py-1.5 text-[10px] font-black text-slate-600 hover:bg-slate-100">Reset</button>
    </div></div>
+  {range==="Custom"&&<div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3">
+    <label className="flex items-center gap-2 text-[11px] font-bold text-slate-600">From <input type="date" value={customStart||defaultCustomStart} max={customEnd||defaultCustomEnd} onChange={e=>{setCustomStart(e.target.value);setZoom(1);setPan(0);setSelected(null)}} className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-semibold outline-none focus:border-slate-500"/></label>
+    <span className="text-slate-400">→</span>
+    <label className="flex items-center gap-2 text-[11px] font-bold text-slate-600">To <input type="date" value={customEnd||defaultCustomEnd} min={customStart||defaultCustomStart} max={dateKey(chartEnd)} onChange={e=>{setCustomEnd(e.target.value);setZoom(1);setPan(0);setSelected(null)}} className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-semibold outline-none focus:border-slate-500"/></label>
+   </div>}
   <div className="mt-2 overflow-x-auto rounded-xl bg-white p-2"><svg viewBox={"0 0 "+width+" "+height} className="min-w-[760px] h-auto w-full select-none touch-none" aria-label={"Cumulative contribution chart "+range+" view. Tap the chart to inspect a date."} onClick={handleChartClick} onWheel={handleWheel} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
    {yLabels.map(v=><g key={v}><line x1={left} x2={width-right} y1={yFor(v)} y2={yFor(v)} stroke="#e5e7eb"/><text x={left-10} y={yFor(v)+4} textAnchor="end" fontSize="10" fill="#64748b">{money(v)}</text></g>)}
    <text x="16" y={top+plotH/2} transform={"rotate(-90 16 "+(top+plotH/2)+")"} textAnchor="middle" fontSize="10" fontWeight="700" fill="#64748b">Cumulative amount</text>
