@@ -41,45 +41,44 @@ function chooseTopic(attempts:Attempt[], mistakes:any[]){
 }
 
 export default function StudyPage(){
- const supabase=useMemo(() => typeof window === "undefined" ? null : createClient(), []);
+ function getSupabase(){ return createClient(); }
  const [user,setUser]=useState<any>(null); const [loading,setLoading]=useState(true); const [target,setTarget]=useState<TargetRow|null>(null); const [attempts,setAttempts]=useState<Attempt[]>([]); const [mistakes,setMistakes]=useState<any[]>([]);
  const [examType,setExamType]=useState("si"); const [targetDate,setTargetDate]=useState(""); const [dailyMinutes,setDailyMinutes]=useState(120); const [targetScore,setTargetScore]=useState(150); const [phase,setPhase]=useState("diagnostic"); const [saving,setSaving]=useState(false); const [message,setMessage]=useState("");
  const [mode,setMode]=useState<"target"|"diagnostic"|"teach"|"retest"|"dashboard">("target"); const [selectedTopic,setSelectedTopic]=useState("Percentages"); const [answers,setAnswers]=useState<Record<number,number>>({}); const [startedAt,setStartedAt]=useState<number|null>(null); const [result,setResult]=useState<{score:number;wrong:Q[]}|null>(null);
 
  async function load(){
-  if(!supabase)return;
-  setLoading(true); const {data:{user:u}}=await supabase.auth.getUser(); if(!u){setUser(null);setLoading(false);return;} setUser(u);
+  setLoading(true); const {data:{user:u}}=await getSupabase().auth.getUser(); if(!u){setUser(null);setLoading(false);return;} setUser(u);
   const [t,a,m]=await Promise.all([
-   supabase.from("study_targets").select("user_id,exam_type,target_date,daily_minutes,target_score,phase,current_topic,diagnostic_completed").eq("user_id",u.id).maybeSingle(),
-   supabase.from("study_attempts").select("id,activity_type,topic,questions,correct,score,duration_seconds,created_at").eq("user_id",u.id).order("created_at",{ascending:false}).limit(300),
-   supabase.from("study_mistakes").select("id,topic,question,explanation,created_at,resolved_at").eq("user_id",u.id).is("resolved_at",null).order("created_at",{ascending:false}).limit(100)
+   getSupabase().from("study_targets").select("user_id,exam_type,target_date,daily_minutes,target_score,phase,current_topic,diagnostic_completed").eq("user_id",u.id).maybeSingle(),
+   getSupabase().from("study_attempts").select("id,activity_type,topic,questions,correct,score,duration_seconds,created_at").eq("user_id",u.id).order("created_at",{ascending:false}).limit(300),
+   getSupabase().from("study_mistakes").select("id,topic,question,explanation,created_at,resolved_at").eq("user_id",u.id).is("resolved_at",null).order("created_at",{ascending:false}).limit(100)
   ]);
   setTarget(t.data);setAttempts(a.data||[]);setMistakes(m.data||[]);
   if(t.data){setExamType(t.data.exam_type);setTargetDate(t.data.target_date||"");setDailyMinutes(t.data.daily_minutes||120);setTargetScore(t.data.target_score||150);setPhase(t.data.phase||"diagnostic");setSelectedTopic(t.data.current_topic||chooseTopic(a.data||[],m.data||[]));setMode(t.data.diagnostic_completed?"dashboard":"diagnostic");}
   else setMode("target");
   setLoading(false);
  }
- useEffect(()=>{if(!supabase)return;void load();const {data:l}=supabase.auth.onAuthStateChange(()=>void load());return()=>l.subscription.unsubscribe()},[supabase]);
+ useEffect(()=>{void load();const {data:l}=getSupabase().auth.onAuthStateChange(()=>void load());return()=>l.subscription.unsubscribe()},[]);
 
  const overall=useMemo(()=>{const q=attempts.reduce((n,a)=>n+a.questions,0),c=attempts.reduce((n,a)=>n+a.correct,0);return q?Math.round(c/q*100):0},[attempts]);
  const days=daysLeft(targetDate); const topic=selectedTopic||chooseTopic(attempts,mistakes); const lesson=lessons[topic]||lessons.Percentages;
  const topicAccuracy=useMemo(()=>{const xs=attempts.filter(a=>a.topic===topic);const q=xs.reduce((n,a)=>n+a.questions,0),c=xs.reduce((n,a)=>n+a.correct,0);return q?Math.round(c/q*100):null},[attempts,topic]);
  const planText=useMemo(()=>{if(!targetDate)return "Set a target date and I will calculate the runway.";const d=Math.max(1,days||1);const minutes=Math.max(30,dailyMinutes);const total=Math.round(d*minutes/60);return `${d} days × ${minutes} min/day ≈ ${total} focused hours available. TargetBud will spend that time on gaps first, then coverage, revision and mocks.`},[targetDate,dailyMinutes,days]);
 
- async function saveTarget(){if(!user||!targetDate){setMessage("Choose your target date first.");return;}setSaving(true);const {error}=await supabase.from("study_targets").upsert({user_id:user.id,exam_type:examType,target_date:targetDate,daily_minutes:dailyMinutes,target_score:targetScore,phase:"diagnostic",current_topic:null,diagnostic_completed:false},{onConflict:"user_id"});setSaving(false);if(error)setMessage(error.message);else{setMessage("Target locked. Now I will test your baseline before teaching.");setMode("diagnostic");await load();}}
+ async function saveTarget(){if(!user||!targetDate){setMessage("Choose your target date first.");return;}setSaving(true);const {error}=await getSupabase().from("study_targets").upsert({user_id:user.id,exam_type:examType,target_date:targetDate,daily_minutes:dailyMinutes,target_score:targetScore,phase:"diagnostic",current_topic:null,diagnostic_completed:false},{onConflict:"user_id"});setSaving(false);if(error)setMessage(error.message);else{setMessage("Target locked. Now I will test your baseline before teaching.");setMode("diagnostic");await load();}}
 
  function startTest(kind:"diagnostic"|"retest"){setAnswers({});setResult(null);setStartedAt(Date.now());setMode(kind);}
  async function submitTest(){if(Object.keys(answers).length<questions.length){setMessage(`Answer all ${questions.length} questions before finishing.`);return;}const elapsed=startedAt?Math.round((Date.now()-startedAt)/1000):0;const score=questions.reduce((n,q,i)=>n+(answers[i]===q.correct?1:0),0);const wrong=questions.filter((q,i)=>answers[i]!==q.correct);setSaving(true);
-  const {data:attempt,error}=await supabase.from("study_attempts").insert({user_id:user.id,target_type:examType,activity_type:mode==="diagnostic"?"diagnostic":"retest",topic:topic,questions:questions.length,correct:score,score:score,duration_seconds:elapsed,metadata:{mode,topics:questions.map(q=>q.topic)}}).select("id").single();
-  if(!error&&attempt&&wrong.length)await supabase.from("study_mistakes").insert(wrong.map(q=>({user_id:user.id,attempt_id:attempt.id,topic:q.topic,question:q.q,explanation:q.why})));
+  const {data:attempt,error}=await getSupabase().from("study_attempts").insert({user_id:user.id,target_type:examType,activity_type:mode==="diagnostic"?"diagnostic":"retest",topic:topic,questions:questions.length,correct:score,score:score,duration_seconds:elapsed,metadata:{mode,topics:questions.map(q=>q.topic)}}).select("id").single();
+  if(!error&&attempt&&wrong.length)await getSupabase().from("study_mistakes").insert(wrong.map(q=>({user_id:user.id,attempt_id:attempt.id,topic:q.topic,question:q.q,explanation:q.why})));
   const accuracy=Math.round(score/questions.length*100);setResult({score,wrong});setSaving(false);setMessage("");
   if(mode==="diagnostic"){
-   const next=wrong[0]?.topic||topic; await supabase.from("study_targets").update({diagnostic_completed:true,phase:"learning",current_topic:next}).eq("user_id",user.id);setSelectedTopic(next);
-  } else if(accuracy>=80){await supabase.from("study_targets").update({phase:"practice",current_topic:chooseTopic([...attempts,{id:"local",activity_type:"retest",topic,questions:questions.length,correct:score,score,duration_seconds:elapsed,created_at:new Date().toISOString()}],mistakes)}).eq("user_id",user.id)}
+   const next=wrong[0]?.topic||topic; await getSupabase().from("study_targets").update({diagnostic_completed:true,phase:"learning",current_topic:next}).eq("user_id",user.id);setSelectedTopic(next);
+  } else if(accuracy>=80){await getSupabase().from("study_targets").update({phase:"practice",current_topic:chooseTopic([...attempts,{id:"local",activity_type:"retest",topic,questions:questions.length,correct:score,score,duration_seconds:elapsed,created_at:new Date().toISOString()}],mistakes)}).eq("user_id",user.id)}
   await load();setMode("dashboard");
  }
- async function moveToTeach(){const next=chooseTopic(attempts,mistakes);setSelectedTopic(next);setMode("teach");await supabase.from("study_targets").update({phase:"learning",current_topic:next}).eq("user_id",user.id);await load();}
- async function resolveMistake(id:string){await supabase.from("study_mistakes").update({resolved_at:new Date().toISOString()}).eq("id",id).eq("user_id",user.id);await load();}
+ async function moveToTeach(){const next=chooseTopic(attempts,mistakes);setSelectedTopic(next);setMode("teach");await getSupabase().from("study_targets").update({phase:"learning",current_topic:next}).eq("user_id",user.id);await load();}
+ async function resolveMistake(id:string){await getSupabase().from("study_mistakes").update({resolved_at:new Date().toISOString()}).eq("id",id).eq("user_id",user.id);await load();}
 
  if(loading)return <main className="min-h-screen grid place-items-center bg-white"><b>Loading your private study coach…</b></main>;
  if(!user)return <main className="min-h-screen grid place-items-center bg-white px-6 text-center"><div className="max-w-lg"><div className="mx-auto grid size-16 place-items-center rounded-2xl bg-black text-white"><LockKeyhole/></div><h1 className="mt-6 text-4xl font-black">Your preparation starts with your target.</h1><p className="mt-4 text-sm leading-7 text-black/55">Login to save your target date, diagnostic scores, mistakes and adaptive study history.</p><a href="/login" className="mt-6 inline-flex rounded-xl bg-black px-6 py-3 text-sm font-black text-white">Login / Sign up</a></div></main>;
