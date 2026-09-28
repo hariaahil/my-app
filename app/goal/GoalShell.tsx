@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Banknote, LogIn, ReceiptText, RefreshCw, Target, TrendingUp, WalletCards } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
-import { DEFAULT_GOAL_TARGET, currentValue, projectGoal, recurringMonthly, isActive, type GoalActivity, type GoalInvestment } from "@/lib/goal-projection";
+import { DEFAULT_GOAL_TARGET, currentValue, projectGoal, recurringMonthly, isActive, addMonths, type GoalActivity, type GoalInvestment } from "@/lib/goal-projection";
 
 const money=(n:number)=>`₹${Math.round(Math.max(0,n)).toLocaleString("en-IN")}`;
 const dateText=(d:Date)=>d.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});
