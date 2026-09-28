@@ -41,12 +41,13 @@ function chooseTopic(attempts:Attempt[], mistakes:any[]){
 }
 
 export default function StudyPage(){
- const supabase=createClient();
+ const supabase=useMemo(() => typeof window === "undefined" ? null : createClient(), []);
  const [user,setUser]=useState<any>(null); const [loading,setLoading]=useState(true); const [target,setTarget]=useState<TargetRow|null>(null); const [attempts,setAttempts]=useState<Attempt[]>([]); const [mistakes,setMistakes]=useState<any[]>([]);
  const [examType,setExamType]=useState("si"); const [targetDate,setTargetDate]=useState(""); const [dailyMinutes,setDailyMinutes]=useState(120); const [targetScore,setTargetScore]=useState(150); const [phase,setPhase]=useState("diagnostic"); const [saving,setSaving]=useState(false); const [message,setMessage]=useState("");
  const [mode,setMode]=useState<"target"|"diagnostic"|"teach"|"retest"|"dashboard">("target"); const [selectedTopic,setSelectedTopic]=useState("Percentages"); const [answers,setAnswers]=useState<Record<number,number>>({}); const [startedAt,setStartedAt]=useState<number|null>(null); const [result,setResult]=useState<{score:number;wrong:Q[]}|null>(null);
 
  async function load(){
+  if(!supabase)return;
   setLoading(true); const {data:{user:u}}=await supabase.auth.getUser(); if(!u){setUser(null);setLoading(false);return;} setUser(u);
   const [t,a,m]=await Promise.all([
    supabase.from("study_targets").select("user_id,exam_type,target_date,daily_minutes,target_score,phase,current_topic,diagnostic_completed").eq("user_id",u.id).maybeSingle(),
@@ -58,7 +59,7 @@ export default function StudyPage(){
   else setMode("target");
   setLoading(false);
  }
- useEffect(()=>{load();const {data:l}=supabase.auth.onAuthStateChange(()=>load());return()=>l.subscription.unsubscribe()},[]);
+ useEffect(()=>{if(!supabase)return;void load();const {data:l}=supabase.auth.onAuthStateChange(()=>void load());return()=>l.subscription.unsubscribe()},[supabase]);
 
  const overall=useMemo(()=>{const q=attempts.reduce((n,a)=>n+a.questions,0),c=attempts.reduce((n,a)=>n+a.correct,0);return q?Math.round(c/q*100):0},[attempts]);
  const days=daysLeft(targetDate); const topic=selectedTopic||chooseTopic(attempts,mistakes); const lesson=lessons[topic]||lessons.Percentages;
