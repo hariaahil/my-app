@@ -44,7 +44,35 @@ const fmt = (v:string) => { const n=parseAmount(v); return n ? n.toLocaleString(
 export default function FinanceLedgerPage() {
   const [rows,setRows] = useState<Entry[]>(initialRows);
   const [saved,setSaved] = useState(false);
-  useEffect(()=>{ try { const raw=localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem("targetbud-finance-ledger-v1"); if(raw){ const parsed=JSON.parse(raw); if(Array.isArray(parsed)) setRows(parsed.map((r:any)=>({id:String(r.id ?? Date.now()),availableIn:r.availableIn ?? (String(r.name ?? "").toLowerCase().includes("lent") ? "Lended" : (String(r.mode ?? "").toLowerCase()==="cash" || String(r.name ?? "").toLowerCase()==="cash" ? "Cash" : "Bank")),amount:String(r.amount ?? ""),policy:String(r.policy ?? ""),mode:String(r.mode ?? ""),interestRate:String(r.interestRate ?? ""),investedDate:String(r.investedDate ?? ""),note:String(r.note ?? "")}))); } } catch {} },[]);
+  const [hydrated,setHydrated] = useState(false);
+  useEffect(()=>{
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem("targetbud-finance-ledger-v1");
+      if(raw) {
+        const parsed = JSON.parse(raw);
+        if(Array.isArray(parsed)) setRows(parsed.map((r:any)=>({
+          id:String(r.id ?? Date.now()),
+          availableIn:r.availableIn ?? (String(r.name ?? "").toLowerCase().includes("lent") ? "Lended" : (String(r.mode ?? "").toLowerCase()==="cash" || String(r.name ?? "").toLowerCase()==="cash" ? "Cash" : "Bank")),
+          amount:String(r.amount ?? ""),
+          policy:String(r.policy ?? ""),
+          mode:String(r.mode ?? ""),
+          interestRate:String(r.interestRate ?? ""),
+          investedDate:String(r.investedDate ?? ""),
+          note:String(r.note ?? "")
+        })));
+      }
+    } catch {}
+    finally { setHydrated(true); }
+  },[]);
+  useEffect(()=>{
+    if(!hydrated) return;
+    try {
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(rows));
+      setSaved(true);
+    } catch {
+      setSaved(false);
+    }
+  },[rows,hydrated]);
   const today = new Date();
   const interestFor = (r: Entry) => {
     const principal = parseAmount(r.amount);
@@ -60,15 +88,15 @@ export default function FinanceLedgerPage() {
   const total = rows.reduce((s,r)=>s+parseAmount(r.amount),0);
   const update = (id:string,key:keyof Entry,value:string)=>{setRows(old=>old.map(r=>r.id===id?{...r,[key]:value}:r));setSaved(false)};
   const add = ()=>{setRows(old=>[...old,{id:Date.now().toString(),availableIn:"Bank",amount:"",policy:"",mode:"",interestRate:"",investedDate:"",note:""}]);setSaved(false)};
-  const save = ()=>{localStorage.setItem(STORAGE_KEY,JSON.stringify(rows));setSaved(true)};
-  const reset = ()=>{if(confirm("Reset this ledger to the initial transcription? This replaces your saved local copy.")){setRows(initialRows);localStorage.removeItem(STORAGE_KEY);setSaved(false)}};
+  const save = ()=>{try{localStorage.setItem(STORAGE_KEY,JSON.stringify(rows));setSaved(true)}catch{setSaved(false)}};
+  const reset = ()=>{if(confirm("Reset this ledger to the initial transcription? This replaces your saved local copy.")){setRows(initialRows);localStorage.removeItem(STORAGE_KEY);localStorage.removeItem("targetbud-finance-ledger-v1");setSaved(false)}};
   const download = ()=>{const head=["Available In","Amount (INR)","Reference","Interest Rate (% p.a.)","Invested Date","Interest Earned (INR, simple annual)","Running Total (INR)","Notes"];const csv=[head,...rows.map((r,i)=>[r.availableIn,r.amount,r.policy,r.interestRate,r.investedDate,String(interestFor(r).toFixed(2)),String(running[i]),r.note])].map(line=>line.map(x=>'"'+String(x??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));const a=document.createElement("a");a.href=url;a.download="targetbud-finance-ledger.csv";a.click();URL.revokeObjectURL(url)};
   return <main className="min-h-screen bg-[#f7f7f5] text-[#171717]">
     <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
       <Link href="/goal" className="inline-flex items-center gap-2 text-sm font-bold text-black/55 hover:text-black"><ArrowLeft size={16}/> Finance overview</Link>
       <header className="mt-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div><p className="text-xs font-black uppercase tracking-[.18em] text-black/45">Finance · Records</p><h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Deposit & lending ledger</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-black/55">A digital version of your notebook table. Edit the transcription, add rows, save it on this device, or export to CSV.</p></div>
-        <div className="flex flex-wrap gap-2"><button onClick={add} className="inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2.5 text-sm font-bold text-white"><Plus size={16}/> Add row</button><button onClick={save} className="inline-flex items-center gap-2 rounded-xl border border-black/15 bg-white px-4 py-2.5 text-sm font-bold"><Save size={16}/>{saved?"Saved":"Save on device"}</button><button onClick={download} className="inline-flex items-center gap-2 rounded-xl border border-black/15 bg-white px-4 py-2.5 text-sm font-bold"><Download size={16}/> Export CSV</button></div>
+        <div><p className="text-xs font-black uppercase tracking-[.18em] text-black/45">Finance · Records</p><h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Deposit & lending ledger</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-black/55">A digital version of your notebook table. Edit the transcription, add rows, changes auto-save on this device, or export to CSV.</p></div>
+        <div className="flex flex-wrap gap-2"><button onClick={add} className="inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2.5 text-sm font-bold text-white"><Plus size={16}/> Add row</button><button onClick={save} className="inline-flex items-center gap-2 rounded-xl border border-black/15 bg-white px-4 py-2.5 text-sm font-bold"><Save size={16}/>{saved?"Auto-saved":"Save on device"}</button><button onClick={download} className="inline-flex items-center gap-2 rounded-xl border border-black/15 bg-white px-4 py-2.5 text-sm font-bold"><Download size={16}/> Export CSV</button></div>
       </header>
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-black/10 bg-white p-4"><p className="text-xs font-bold text-black/45">Rows</p><p className="mt-1 text-2xl font-black">{rows.length}</p></div>
@@ -76,7 +104,7 @@ export default function FinanceLedgerPage() {
         <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4"><p className="text-xs font-bold text-amber-900">Transcription note</p><p className="mt-1 text-sm leading-5 text-amber-900">Some handwriting is unclear. Verify every amount and category before relying on totals.</p></div>
       </div>
       <div className="mt-5 overflow-hidden rounded-2xl border border-black/10 bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 px-4 py-3"><div><h2 className="font-black">Ledger table</h2><p className="text-xs text-black/45">Interest is estimated using simple annual interest from each invested date through today. Enter a rate and date to calculate it.</p></div><button onClick={reset} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-black/50 hover:bg-black/5"><RotateCcw size={14}/> Reset transcription</button></div>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 px-4 py-3"><div><h2 className="font-black">Ledger table</h2><p className="text-xs text-black/45">Changes auto-save in this browser. Interest is estimated using simple annual interest from each invested date through today.</p></div><button onClick={reset} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-black/50 hover:bg-black/5"><RotateCcw size={14}/> Reset transcription</button></div>
         <div className="overflow-x-auto"><table className="w-full min-w-[1250px] border-collapse text-left text-sm">
           <thead className="bg-[#f1f1ee] text-xs uppercase tracking-wider text-black/55"><tr>{["Available In","Amount (₹)","Reference","Interest rate (% p.a.)","Invested date","Interest earned","Running total","Notes",""].map(h=><th key={h} className="border-b border-black/10 px-3 py-3 font-black">{h}</th>)}</tr></thead>
           <tbody>{rows.map((r,i)=><tr key={r.id} className="border-b border-black/[.06] last:border-0 hover:bg-black/[.015]">
