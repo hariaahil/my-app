@@ -5,7 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Download, Plus, RotateCcw, Save, Trash2, Cloud } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
 
-type Entry = { id: string; availableIn: string; amount: string; policy: string; mode: string; interestRate: string; investedDate: string; note: string };
+type Frequency = "one_time" | "monthly" | "quarterly" | "yearly";
+type Direction = "inflow" | "outflow";
+type Entry = { id: string; availableIn: string; amount: string; policy: string; mode: string; interestRate: string; investedDate: string; note: string; frequency: Frequency; startDate: string; endDate: string; direction: Direction };
 const STORAGE_KEY = "targetbud-finance-ledger-v2";
 const initialRows: Entry[] = [
   {id:"1",availableIn:"Bank",amount:"98500",policy:"6.30 lakh",mode:"Deposit",interestRate:"",investedDate:"",note:"From notebook; verify amount/balance"},
@@ -62,17 +64,17 @@ export default function FinanceLedgerPage() {
         }
         const uid=auth.data.user.id;
         if(active) setUserId(uid);
-        const result=await supabase.from("finance_ledger_entries").select("id,available_in,amount,reference,interest_rate,invested_date,note,sort_order").eq("user_id",uid).order("sort_order");
+        const result=await supabase.from("finance_ledger_entries").select("id,available_in,amount,reference,interest_rate,invested_date,note,sort_order,frequency,start_date,end_date,direction").eq("user_id",uid).order("sort_order");
         if(result.error) throw result.error;
-        let loaded:Entry[]=(result.data||[]).map((r:any)=>({id:String(r.id),availableIn:r.available_in,amount:String(r.amount||""),policy:String(r.reference||""),mode:"",interestRate:String(r.interest_rate||""),investedDate:String(r.invested_date||""),note:String(r.note||"")}));
+        let loaded:Entry[]=(result.data||[]).map((r:any)=>({id:String(r.id),availableIn:r.available_in,amount:String(r.amount||""),policy:String(r.reference||""),mode:"",interestRate:String(r.interest_rate||""),investedDate:String(r.invested_date||""),note:String(r.note||""),frequency:(r.frequency||"one_time") as Frequency,startDate:String(r.start_date||""),endDate:String(r.end_date||""),direction:(r.direction||"inflow") as Direction}));
         if(!loaded.length){
           let local:Entry[]=[];
           try {
             const raw=localStorage.getItem(STORAGE_KEY)||localStorage.getItem("targetbud-finance-ledger-v1");
-            if(raw){const parsed=JSON.parse(raw);if(Array.isArray(parsed))local=parsed.map((r:any)=>({id:String(r.id||Date.now()),availableIn:r.availableIn||"Bank",amount:String(r.amount||""),policy:String(r.policy||""),mode:String(r.mode||""),interestRate:String(r.interestRate||""),investedDate:String(r.investedDate||""),note:String(r.note||"")}));}
+            if(raw){const parsed=JSON.parse(raw);if(Array.isArray(parsed))local=parsed.map((r:any)=>({id:String(r.id||Date.now()),availableIn:r.availableIn||"Bank",amount:String(r.amount||""),policy:String(r.policy||""),mode:String(r.mode||""),interestRate:String(r.interestRate||""),investedDate:String(r.investedDate||""),note:String(r.note||""),frequency:(r.frequency||"one_time") as Frequency,startDate:String(r.startDate||""),endDate:String(r.endDate||""),direction:(r.direction||"inflow") as Direction}));}
           } catch {}
           loaded=local.length?local:initialRows;
-          const seed=await supabase.from("finance_ledger_entries").upsert(loaded.map((r,i)=>({user_id:uid,id:r.id,available_in:r.availableIn,amount:r.amount,reference:r.policy,interest_rate:r.interestRate,invested_date:r.investedDate||null,note:r.note,sort_order:i})),{onConflict:"user_id,id"});
+          const seed=await supabase.from("finance_ledger_entries").upsert(loaded.map((r,i)=>({user_id:uid,id:r.id,available_in:r.availableIn,amount:r.amount,reference:r.policy,interest_rate:r.interestRate,invested_date:r.investedDate||null,note:r.note,sort_order:i,frequency:r.frequency,start_date:r.startDate||null,end_date:r.endDate||null,direction:r.direction})),{onConflict:"user_id,id"});
           if(seed.error) throw seed.error;
         }
         if(active){setRows(loaded);setDbReady(true);setSaved(true);setDbMessage("Connected · saved to database");}
@@ -90,7 +92,7 @@ export default function FinanceLedgerPage() {
     const timer=window.setTimeout(async()=>{
       try{
         const supabase=createClient();
-        const payload=rows.map((r,i)=>({user_id:userId,id:r.id,available_in:r.availableIn,amount:r.amount,reference:r.policy,interest_rate:r.interestRate,invested_date:r.investedDate||null,note:r.note,sort_order:i,updated_at:new Date().toISOString()}));
+        const payload=rows.map((r,i)=>({user_id:userId,id:r.id,available_in:r.availableIn,amount:r.amount,reference:r.policy,interest_rate:r.interestRate,invested_date:r.investedDate||null,note:r.note,sort_order:i,frequency:r.frequency,start_date:r.startDate||null,end_date:r.endDate||null,direction:r.direction,updated_at:new Date().toISOString()}));
         if(payload.length){
           const result=await supabase.from("finance_ledger_entries").upsert(payload,{onConflict:"user_id,id"});
           if(result.error) throw result.error;
@@ -113,9 +115,26 @@ export default function FinanceLedgerPage() {
   };
   const totalInterest = rows.reduce((sum,r)=>sum+interestFor(r),0);
   const forecastValue = (months:number) => rows.reduce((sum,r)=>{
-    const principal=parseAmount(r.amount);
+    const amount=parseAmount(r.amount);
     const rate=Math.max(0,Number(r.interestRate)||0)/100;
-    return sum+principal+interestFor(r)+(principal*rate*months/12);
+    const isFlow=r.frequency!=="one_time";
+    const principal=isFlow?0:amount;
+    let value=principal+interestFor(r)+(principal*rate*months/12);
+    if(isFlow){
+      const start=r.startDate?new Date(r.startDate+"T00:00:00"):new Date(today.getFullYear(),today.getMonth(),1);
+      const end=r.endDate?new Date(r.endDate+"T23:59:59"):null;
+      const step=r.frequency==="monthly"?1:r.frequency==="quarterly"?3:12;
+      for(let m=0;m<months;m++){
+        const contributionDate=new Date(today.getFullYear(),today.getMonth()+m,1);
+        const startMonth=new Date(start.getFullYear(),start.getMonth(),1);
+        const monthOffset=(contributionDate.getFullYear()-startMonth.getFullYear())*12+(contributionDate.getMonth()-startMonth.getMonth());
+        if(monthOffset<0||(end&&contributionDate>end))continue;
+        if(monthOffset%step!==0)continue;
+        value+=(r.direction==="outflow"?-amount:amount);
+        if(r.direction==="inflow"&&rate>0)value+=amount*rate*Math.max(0,months-m-1)/12;
+      }
+    }
+    return sum+value;
   },0);
   const monthlyForecast=Array.from({length:12},(_,i)=>({period:i+1,value:forecastValue(i+1)}));
   const yearlyForecast=Array.from({length:12},(_,i)=>({period:i+1,value:forecastValue((i+1)*12)}));
@@ -123,10 +142,10 @@ export default function FinanceLedgerPage() {
   const running = useMemo(()=>{let total=0; return rows.map(r=>{ total+=parseAmount(r.amount); return total; });},[rows]);
   const total = rows.reduce((s,r)=>s+parseAmount(r.amount),0);
   const update = (id:string,key:keyof Entry,value:string)=>{setRows(old=>old.map(r=>r.id===id?{...r,[key]:value}:r));setSaved(false)};
-  const add = ()=>{setRows(old=>[...old,{id:Date.now().toString(),availableIn:"Bank",amount:"",policy:"",mode:"",interestRate:"",investedDate:"",note:""}]);setSaved(false)};
-  const save = async ()=>{if(!userId){setDbMessage("Please log in to save to the database.");return;}try{const payload=rows.map((r,i)=>({user_id:userId,id:r.id,available_in:r.availableIn,amount:r.amount,reference:r.policy,interest_rate:r.interestRate,invested_date:r.investedDate||null,note:r.note,sort_order:i}));if(payload.length){const result=await createClient().from("finance_ledger_entries").upsert(payload,{onConflict:"user_id,id"});if(result.error)throw result.error;}localStorage.setItem(STORAGE_KEY,JSON.stringify(rows));setSaved(true);setDbMessage("All changes saved to database");}catch(error:any){setSaved(false);setDbMessage("Save failed: "+(error?.message||"please try again"));}};
+  const add = ()=>{setRows(old=>[...old,{id:Date.now().toString(),availableIn:"Bank",amount:"",policy:"",mode:"",interestRate:"",investedDate:"",note:"",frequency:"one_time",startDate:"",endDate:"",direction:"inflow"}]);setSaved(false)};
+  const save = async ()=>{if(!userId){setDbMessage("Please log in to save to the database.");return;}try{const payload=rows.map((r,i)=>({user_id:userId,id:r.id,available_in:r.availableIn,amount:r.amount,reference:r.policy,interest_rate:r.interestRate,invested_date:r.investedDate||null,note:r.note,sort_order:i,frequency:r.frequency,start_date:r.startDate||null,end_date:r.endDate||null,direction:r.direction}));if(payload.length){const result=await createClient().from("finance_ledger_entries").upsert(payload,{onConflict:"user_id,id"});if(result.error)throw result.error;}localStorage.setItem(STORAGE_KEY,JSON.stringify(rows));setSaved(true);setDbMessage("All changes saved to database");}catch(error:any){setSaved(false);setDbMessage("Save failed: "+(error?.message||"please try again"));}};
   const reset = async ()=>{if(!confirm("Reset this ledger to the initial transcription? This replaces your saved database records."))return;try{if(userId){const result=await createClient().from("finance_ledger_entries").delete().eq("user_id",userId);if(result.error)throw result.error;}setRows(initialRows);localStorage.removeItem(STORAGE_KEY);localStorage.removeItem("targetbud-finance-ledger-v1");setSaved(false);setDbMessage("Resetting ledger…");}catch(error:any){setDbMessage("Reset failed: "+(error?.message||"please try again"));}};
-  const download = ()=>{const head=["Available In","Amount (INR)","Reference","Interest Rate (% p.a.)","Invested Date","Interest Earned (INR, simple annual)","Running Total (INR)","Notes"];const csv=[head,...rows.map((r,i)=>[r.availableIn,r.amount,r.policy,r.interestRate,r.investedDate,String(interestFor(r).toFixed(2)),String(running[i]),r.note])].map(line=>line.map(x=>'"'+String(x??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));const a=document.createElement("a");a.href=url;a.download="targetbud-finance-ledger.csv";a.click();URL.revokeObjectURL(url)};
+  const download = ()=>{const head=["Available In","Amount (INR)","Reference","Interest Rate (% p.a.)","Invested Date","Frequency","Start Date","End Date","Direction","Interest Earned (INR, simple annual)","Running Total (INR)","Notes"];const csv=[head,...rows.map((r,i)=>[r.availableIn,r.amount,r.policy,r.interestRate,r.investedDate,r.frequency,r.startDate,r.endDate,r.direction,String(interestFor(r).toFixed(2)),String(running[i]),r.note])].map(line=>line.map(x=>'"'+String(x??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));const a=document.createElement("a");a.href=url;a.download="targetbud-finance-ledger.csv";a.click();URL.revokeObjectURL(url)};
   return <main className="min-h-screen bg-[#f7f7f5] text-[#171717]">
     <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
       <Link href="/goal" className="inline-flex items-center gap-2 text-sm font-bold text-black/55 hover:text-black"><ArrowLeft size={16}/> Finance overview</Link>
@@ -140,15 +159,19 @@ export default function FinanceLedgerPage() {
         <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4"><p className="text-xs font-bold text-amber-900">Transcription note</p><p className="mt-1 text-sm leading-5 text-amber-900">Some handwriting is unclear. Verify every amount and category before relying on totals.</p></div>
       </div>
       <div className="mt-5 overflow-hidden rounded-2xl border border-black/10 bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 px-4 py-3"><div><h2 className="font-black">Ledger table</h2><p className="text-xs text-black/45">{dbMessage} · {!userId && <Link href="/login" className="font-bold underline">Log in</Link>} · Interest is estimated using simple annual interest from each invested date through today.</p></div><button onClick={reset} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-black/50 hover:bg-black/5"><RotateCcw size={14}/> Reset transcription</button></div>
-        <div className="overflow-x-auto"><table className="w-full min-w-[1250px] border-collapse text-left text-sm">
-          <thead className="bg-[#f1f1ee] text-xs uppercase tracking-wider text-black/55"><tr>{["Available In","Amount (₹)","Reference","Interest rate (% p.a.)","Invested date","Interest earned","Running total","Notes",""].map(h=><th key={h} className="border-b border-black/10 px-3 py-3 font-black">{h}</th>)}</tr></thead>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 px-4 py-3"><div><h2 className="font-black">Ledger table</h2><p className="text-xs text-black/45">{dbMessage} · {!userId && <Link href="/login" className="font-bold underline">Log in</Link>} · Set recurring rows to Monthly, Quarterly, or Yearly. For recurring income/expenses, enter the per-period amount and choose Add money or Withdraw.</p></div><button onClick={reset} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-black/50 hover:bg-black/5"><RotateCcw size={14}/> Reset transcription</button></div>
+        <div className="overflow-x-auto"><table className="w-full min-w-[1850px] border-collapse text-left text-sm">
+          <thead className="bg-[#f1f1ee] text-xs uppercase tracking-wider text-black/55"><tr>{["Available In","Amount (₹)","Reference","Interest rate (% p.a.)","Invested date","Frequency","Start date","End date","Direction","Interest earned","Running total","Notes",""].map(h=><th key={h} className="border-b border-black/10 px-3 py-3 font-black">{h}</th>)}</tr></thead>
           <tbody>{rows.map((r,i)=><tr key={r.id} className="border-b border-black/[.06] last:border-0 hover:bg-black/[.015]">
             <td className="px-2 py-2"><select aria-label="Available in" value={r.availableIn} onChange={e=>update(r.id,"availableIn",e.target.value)} className="w-28 rounded-lg border border-transparent bg-transparent px-2 py-2 outline-none focus:border-black/20 focus:bg-white">{["Bank","Cash","Lended"].map(x=><option key={x}>{x}</option>)}</select></td>
             <td className="px-2 py-2"><input aria-label="Amount in rupees" inputMode="decimal" value={r.amount} onChange={e=>update(r.id,"amount",e.target.value)} placeholder="0" className="w-28 rounded-lg border border-transparent bg-transparent px-2 py-2 text-right font-semibold tabular-nums outline-none focus:border-black/20 focus:bg-white"/></td>
             <td className="px-2 py-2"><input aria-label="Reference" value={r.policy} onChange={e=>update(r.id,"policy",e.target.value)} placeholder="Where the money came from / description" className="w-48 rounded-lg border border-transparent bg-transparent px-2 py-2 outline-none focus:border-black/20 focus:bg-white"/></td>
             <td className="px-2 py-2"><input aria-label="Interest rate percentage per annum" type="number" min="0" step="0.01" value={r.interestRate} onChange={e=>update(r.id,"interestRate",e.target.value)} placeholder="e.g. 7.5" className="w-28 rounded-lg border border-transparent bg-transparent px-2 py-2 outline-none focus:border-black/20 focus:bg-white"/></td>
             <td className="px-2 py-2"><input aria-label="Invested date" type="date" value={r.investedDate} onChange={e=>update(r.id,"investedDate",e.target.value)} className="w-36 rounded-lg border border-transparent bg-transparent px-2 py-2 outline-none focus:border-black/20 focus:bg-white"/></td>
+            <td className="px-2 py-2"><select aria-label="Recurrence frequency" value={r.frequency} onChange={e=>update(r.id,"frequency",e.target.value as Frequency)} className="w-32 rounded-lg border border-transparent bg-transparent px-2 py-2 outline-none focus:border-black/20 focus:bg-white">{[["one_time","One-time"],["monthly","Monthly"],["quarterly","Quarterly"],["yearly","Yearly"]].map(([v,label])=><option key={v} value={v}>{label}</option>)}</select></td>
+            <td className="px-2 py-2"><input aria-label="Recurrence start date" type="date" value={r.startDate} onChange={e=>update(r.id,"startDate",e.target.value)} disabled={r.frequency==="one_time"} className="w-36 rounded-lg border border-transparent bg-transparent px-2 py-2 outline-none disabled:opacity-30 focus:border-black/20 focus:bg-white"/></td>
+            <td className="px-2 py-2"><input aria-label="Recurrence end date" type="date" value={r.endDate} onChange={e=>update(r.id,"endDate",e.target.value)} disabled={r.frequency==="one_time"} className="w-36 rounded-lg border border-transparent bg-transparent px-2 py-2 outline-none disabled:opacity-30 focus:border-black/20 focus:bg-white"/></td>
+            <td className="px-2 py-2"><select aria-label="Cash flow direction" value={r.direction} onChange={e=>update(r.id,"direction",e.target.value as Direction)} className="w-28 rounded-lg border border-transparent bg-transparent px-2 py-2 outline-none focus:border-black/20 focus:bg-white"><option value="inflow">Add money</option><option value="outflow">Withdraw</option></select></td>
             <td className="px-3 py-2 text-right font-bold tabular-nums">{money(interestFor(r))}</td>
             <td className="px-3 py-2 text-right font-bold tabular-nums">{money(running[i])}</td>
             <td className="px-2 py-2"><input aria-label="Notes" value={r.note} onChange={e=>update(r.id,"note",e.target.value)} placeholder="Notes" className="w-40 rounded-lg border border-transparent bg-transparent px-2 py-2 outline-none focus:border-black/20 focus:bg-white"/></td>
@@ -185,7 +208,7 @@ export default function FinanceLedgerPage() {
           </div>
         </div>
       </section>
-      <p className="mt-3 text-xs leading-5 text-black/45">Forecast assumptions: each row keeps its current principal and annual rate; future interest is estimated as simple interest, without adding new deposits, withdrawals, repayments, taxes, fees, rate changes, or compounding. Rows without an interest rate earn no projected interest. This is a scenario estimate, not a guaranteed return.</p>
+      <p className="mt-3 text-xs leading-5 text-black/45">Forecast assumptions: One-time rows count the existing balance once. Monthly, quarterly, and yearly rows add or withdraw the entered amount at that frequency from the start date through the optional end date. Future interest is estimated using simple interest; no compounding, taxes, fees, or rate changes are modeled. This is a scenario estimate, not a guaranteed return.</p>
       <p className="mt-4 text-xs leading-5 text-black/45">Interest earned is an estimate of simple interest (principal × annual rate × elapsed days ÷ 365); it is not compound interest and does not account for tax, fees, withdrawals, or changing rates. Privacy: ledger records are stored in your signed-in Supabase account with row-level access controls. The initial rows are a best-effort transcription from your photo, not a verified accounting record.</p>
     </div>
   </main>;
