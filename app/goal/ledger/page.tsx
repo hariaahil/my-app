@@ -146,11 +146,14 @@ export default function FinanceLedgerPage() {
     const mr=annualRate(r)/12;
     for(let step=1;step<=months;step++){
       const d=new Date(today.getFullYear(),today.getMonth()+step,1);
-      if(interval>0){
+      if(interval===0){
+        const start=startMonthFor(r);
+        if(balance===0&&start<=d&&start>currentMonth) balance=r.direction==="outflow"?-amount:amount;
+      } else {
         const offset=monthOffset(r,d);
-        if(offset>=0&&offset%interval===0)balance += r.direction==="outflow" ? -amount : amount;
+        if(offset>=0&&offset%interval===0) balance += r.direction==="outflow" ? -amount : amount;
       }
-      if(r.direction!=="outflow"&&balance>0)balance*=1+mr;
+      if(r.direction!=="outflow"&&balance>0) balance*=1+mr;
     }
     return sum+balance;
   },0);
