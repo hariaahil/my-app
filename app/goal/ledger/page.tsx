@@ -109,96 +109,56 @@ export default function FinanceLedgerPage() {
     return ()=>window.clearTimeout(timer);
   },[rows,hydrated,userId,dbReady]);
   const today = new Date();
-  const intervalFor = (r: Entry) => r.recurrenceMonths === "custom"
-    ? Math.max(0, Math.floor(Number(r.customMonths) || 0))
-    : Math.max(0, Math.floor(Number(r.recurrenceMonths) || 0));
-  const startMonthFor = (r: Entry) => {
-    const start = r.investedDate ? new Date(r.investedDate + "T00:00:00") : new Date(today.getFullYear(), today.getMonth(), 1);
-    return new Date(start.getFullYear(), start.getMonth(), 1);
-  };
-  const monthOffsetFromStart = (r: Entry, date: Date) => {
-    const start = startMonthFor(r);
-    return (date.getFullYear() - start.getFullYear()) * 12 + date.getMonth() - start.getMonth();
-  };
-  // A recurring row's Amount is its contribution/withdrawal each scheduled month.
-  // Build its current balance by replaying scheduled transactions and monthly interest.
+  const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const intervalFor = (r: Entry) => r.recurrenceMonths === "custom" ? Math.max(0, Math.floor(Number(r.customMonths) || 0)) : Math.max(0, Math.floor(Number(r.recurrenceMonths) || 0));
+  const invalidCustom = (r: Entry) => r.recurrenceMonths === "custom" && intervalFor(r) < 1;
+  const startDateFor = (r: Entry) => r.investedDate ? new Date(r.investedDate + "T00:00:00") : currentMonth;
+  const startMonthFor = (r: Entry) => { const d=startDateFor(r); return new Date(d.getFullYear(),d.getMonth(),1); };
+  const monthOffset = (r: Entry, d: Date) => { const s=startMonthFor(r); return (d.getFullYear()-s.getFullYear())*12+d.getMonth()-s.getMonth(); };
+  const annualRate = (r: Entry) => Math.max(0,Number(r.interestRate)||0)/100;
   const balanceToDate = (r: Entry) => {
-    const amount = parseAmount(r.amount);
-    const rate = Math.max(0, Number(r.interestRate) || 0) / 100 / 12;
-    const interval = intervalFor(r);
-    if (!amount) return 0;
-    if (interval === 0) {
-      const principal = amount;
-      if (!r.investedDate || rate <= 0) return principal;
-      const start = new Date(r.investedDate + "T00:00:00");
-      if (Number.isNaN(start.getTime()) || start > today) return principal;
-      const days = Math.max(0, Math.floor((new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime() - start.getTime()) / 86400000));
-      return principal + principal * (rate * 12) * (days / 365);
+    const amount=parseAmount(r.amount), interval=intervalFor(r), start=startDateFor(r);
+    if(!amount||invalidCustom(r)||Number.isNaN(start.getTime())||start>today)return 0;
+    let balance=0;
+    const mr=annualRate(r)/12, elapsed=Math.max(0,monthOffset(r,currentMonth));
+    if(interval===0){
+      balance=r.direction==="outflow"?-amount:amount;
+      if(r.direction==="outflow")return balance;
+      for(let n=1;n<=elapsed;n++)balance*=1+mr;
+      return balance;
     }
-    const start = startMonthFor(r);
-    if (start > new Date(today.getFullYear(), today.getMonth(), 1)) return 0;
-    let balance = 0;
-    const elapsedMonths = monthOffsetFromStart(r, new Date(today.getFullYear(), today.getMonth(), 1));
-    for (let offset = 0; offset <= elapsedMonths; offset++) {
-      if (offset % interval === 0) {
-        balance = r.direction === "outflow" ? Math.max(0, balance - amount) : balance + amount;
-      }
-      balance *= 1 + rate;
+    for(let n=0;n<=elapsed;n++){
+      if(n%interval===0)balance += r.direction==="outflow" ? -Math.min(amount,Math.max(0,balance)) : amount;
+      if(balance>0)balance*=1+mr;
     }
     return balance;
   };
   const interestFor = (r: Entry) => {
-    const amount = parseAmount(r.amount);
-    const interval = intervalFor(r);
-    if (!amount || !r.investedDate || (Number(r.interestRate) || 0) <= 0) return 0;
-    if (interval === 0) {
-      const start = new Date(r.investedDate + "T00:00:00");
-      if (Number.isNaN(start.getTime()) || start > today) return 0;
-      const days = Math.max(0, Math.floor((new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime() - start.getTime()) / 86400000));
-      return amount * (Math.max(0, Number(r.interestRate) || 0) / 100) * (days / 365);
-    }
-    const start = startMonthFor(r);
-    if (start > new Date(today.getFullYear(), today.getMonth(), 1)) return 0;
-    let balance = 0;
-    let netPrincipal = 0;
-    const elapsedMonths = monthOffsetFromStart(r, new Date(today.getFullYear(), today.getMonth(), 1));
-    const monthlyRate = Math.max(0, Number(r.interestRate) || 0) / 100 / 12;
-    for (let offset = 0; offset <= elapsedMonths; offset++) {
-      if (offset % interval === 0) {
-        const delta = r.direction === "outflow" ? -Math.min(balance, amount) : amount;
-        balance += delta;
-        netPrincipal += delta;
-      }
-      balance *= 1 + monthlyRate;
-    }
-    return balance - netPrincipal;
+    if(r.direction==="outflow"||invalidCustom(r)||!parseAmount(r.amount)||annualRate(r)<=0)return 0;
+    const principal=intervalFor(r)===0?parseAmount(r.amount):parseAmount(r.amount)*(Math.max(0,monthOffset(r,currentMonth))+1);
+    return Math.max(0,balanceToDate(r)-principal);
   };
-  const totalInterest = rows.reduce((sum, r) => sum + interestFor(r), 0);
-  const forecastValue = (months: number) => rows.reduce((sum, r) => {
-    const amount = parseAmount(r.amount);
-    const interval = intervalFor(r);
-    const monthlyRate = Math.max(0, Number(r.interestRate) || 0) / 100 / 12;
-    let balance = balanceToDate(r);
-    for (let step = 1; step <= months; step++) {
-      const date = new Date(today.getFullYear(), today.getMonth() + step, 1);
-      if (interval > 0) {
-        const offset = monthOffsetFromStart(r, date);
-        if (offset >= 0 && offset % interval === 0) {
-          balance = r.direction === "outflow" ? Math.max(0, balance - amount) : balance + amount;
-        }
+  const totalInterest=rows.reduce((sum,r)=>sum+interestFor(r),0);
+  const forecastValue=(months:number)=>rows.reduce((sum,r)=>{
+    const amount=parseAmount(r.amount),interval=intervalFor(r);
+    if(!amount||invalidCustom(r))return sum;
+    let balance=balanceToDate(r);
+    const mr=annualRate(r)/12;
+    for(let step=1;step<=months;step++){
+      const d=new Date(today.getFullYear(),today.getMonth()+step,1);
+      if(interval>0){
+        const offset=monthOffset(r,d);
+        if(offset>=0&&offset%interval===0)balance += r.direction==="outflow" ? -Math.min(amount,Math.max(0,balance)) : amount;
       }
-      balance *= 1 + monthlyRate;
+      if(r.direction!=="outflow"&&balance>0)balance*=1+mr;
     }
-    return sum + balance;
-  }, 0);
-  const monthlyForecast = Array.from({ length: 12 }, (_, i) => ({ period: i + 1, value: forecastValue(i + 1) }));
-  const yearlyForecast = Array.from({ length: 12 }, (_, i) => ({ period: i + 1, value: forecastValue((i + 1) * 12) }));
-
-  const running = useMemo(() => {
-    let runningTotal = 0;
-    return rows.map(r => { runningTotal += balanceToDate(r); return runningTotal; });
-  }, [rows]);
-  const total = rows.reduce((sum, r) => sum + balanceToDate(r), 0);
+    return sum+balance;
+  },0);
+  const monthlyForecast=Array.from({length:12},(_,i)=>({period:i+1,value:forecastValue(i+1)}));
+  const yearlyForecast=Array.from({length:12},(_,i)=>({period:i+1,value:forecastValue((i+1)*12)}));
+  let runningTotal=0;
+  const running=rows.map(r=>{runningTotal+=balanceToDate(r);return runningTotal;});
+  const total=rows.reduce((sum,r)=>sum+balanceToDate(r),0);
   const update = (id:string,key:keyof Entry,value:string)=>{setRows(old=>old.map(r=>r.id===id?{...r,[key]:value}:r));setSaved(false)};
   const add = ()=>{setRows(old=>[...old,{id:Date.now().toString(),availableIn:"Bank",amount:"",policy:"",mode:"",interestRate:"",investedDate:"",note:"",recurrenceMonths:"0",customMonths:"",direction:"inflow"}]);setSaved(false)};
   const save = async ()=>{if(!userId){setDbMessage("Please log in to save to the database.");return;}try{const payload=rows.map((r,i)=>({user_id:userId,id:r.id,available_in:r.availableIn,amount:r.amount,reference:r.policy,interest_rate:r.interestRate,invested_date:r.investedDate||null,note:r.note,sort_order:i,recurrence_months:(r.recurrenceMonths==="custom"?Number(r.customMonths)||0:Number(r.recurrenceMonths)||0),direction:r.direction}));if(payload.length){const result=await createClient().from("finance_ledger_entries").upsert(payload,{onConflict:"user_id,id"});if(result.error)throw result.error;}localStorage.setItem(STORAGE_KEY,JSON.stringify(rows));setSaved(true);setDbMessage("All changes saved to database");}catch(error:any){setSaved(false);setDbMessage("Save failed: "+(error?.message||"please try again"));}};
