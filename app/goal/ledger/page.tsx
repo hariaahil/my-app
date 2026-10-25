@@ -105,7 +105,7 @@ export default function FinanceLedgerPage() {
   const interestFor = (r: Entry) => {
     const principal = parseAmount(r.amount);
     const rate = Math.max(0, Number(r.interestRate) || 0);
-    if (!r.investedDate || !principal || !rate) return 0;
+    if (r.frequency!=="one_time" || !r.investedDate || !principal || !rate) return 0;
     const start = new Date(r.investedDate + "T00:00:00");
     if (Number.isNaN(start.getTime()) || start > today) return 0;
     const days = Math.max(0, Math.floor((new Date(today.getFullYear(),today.getMonth(),today.getDate()).getTime()-start.getTime())/86400000));
@@ -154,7 +154,7 @@ export default function FinanceLedgerPage() {
             <td className="px-2 py-2"><input aria-label="Notes" value={r.note} onChange={e=>update(r.id,"note",e.target.value)} placeholder="Notes" className="w-40 rounded-lg border border-transparent bg-transparent px-2 py-2 outline-none focus:border-black/20 focus:bg-white"/></td>
             <td className="px-2 py-2"><button aria-label="Delete row" onClick={async()=>{setRows(old=>old.filter(x=>x.id!==r.id));setSaved(false);if(userId){const result=await createClient().from("finance_ledger_entries").delete().eq("user_id",userId).eq("id",r.id);if(result.error)setDbMessage("Delete failed: "+result.error.message);else setDbMessage("Record deleted from database");}}} className="grid size-8 place-items-center rounded-lg text-black/35 hover:bg-red-50 hover:text-red-700"><Trash2 size={15}/></button></td>
           </tr>)}</tbody>
-          <tfoot className="bg-[#f7f7f5]"><tr><td colSpan={2} className="px-4 py-4 font-black">Totals</td><td></td><td></td><td></td><td className="px-3 py-4 text-right text-base font-black tabular-nums">{money(totalInterest)}</td><td className="px-3 py-4 text-right text-base font-black tabular-nums">{money(total)}</td><td className="px-3 py-4 text-xs text-black/45">Estimated interest only; verify rates and dates.</td><td></td></tr></tfoot>
+          <tfoot className="bg-[#f7f7f5]"><tr><td colSpan={2} className="px-4 py-4 font-black">One-time totals</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td className="px-3 py-4 text-right text-base font-black tabular-nums">{money(totalInterest)}</td><td className="px-3 py-4 text-right text-base font-black tabular-nums">{money(total)}</td><td className="px-3 py-4 text-xs text-black/45">Estimated interest only; verify rates and dates.</td><td></td></tr></tfoot>
         </table></div>
       </div>
       <section className="mt-5 grid gap-4 lg:grid-cols-2">
