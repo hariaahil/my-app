@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Download, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Plus, RotateCcw, Save, Trash2, Cloud } from "lucide-react";
+import { createClient } from "@/lib/supabase-browser";
 
 type Entry = { id: string; availableIn: string; amount: string; policy: string; mode: string; interestRate: string; investedDate: string; note: string };
 const STORAGE_KEY = "targetbud-finance-ledger-v2";
@@ -45,6 +46,8 @@ export default function FinanceLedgerPage() {
   const [rows,setRows] = useState<Entry[]>(initialRows);
   const [saved,setSaved] = useState(false);
   const [hydrated,setHydrated] = useState(false);
+  const [userId,setUserId] = useState<string|null>(null);
+  const [dbMessage,setDbMessage] = useState("Connecting to database…");
   useEffect(()=>{
     try {
       const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem("targetbud-finance-ledger-v1");
