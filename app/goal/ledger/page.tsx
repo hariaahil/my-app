@@ -44,7 +44,7 @@ const fmt = (v:string) => { const n=parseAmount(v); return n ? n.toLocaleString(
 export default function FinanceLedgerPage() {
   const [rows,setRows] = useState<Entry[]>(initialRows);
   const [saved,setSaved] = useState(false);
-  useEffect(()=>{ try { const raw=localStorage.getItem(STORAGE_KEY); if(raw){ const parsed=JSON.parse(raw); if(Array.isArray(parsed)) setRows(parsed); } } catch {} },[]);
+  useEffect(()=>{ try { const raw=localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem("targetbud-finance-ledger-v1"); if(raw){ const parsed=JSON.parse(raw); if(Array.isArray(parsed)) setRows(parsed.map((r:any)=>({id:String(r.id ?? Date.now()),availableIn:r.availableIn ?? (String(r.name ?? "").toLowerCase().includes("lent") ? "Lended" : (String(r.mode ?? "").toLowerCase()==="cash" || String(r.name ?? "").toLowerCase()==="cash" ? "Cash" : "Bank")),amount:String(r.amount ?? ""),policy:String(r.policy ?? ""),mode:String(r.mode ?? ""),interestRate:String(r.interestRate ?? ""),investedDate:String(r.investedDate ?? ""),note:String(r.note ?? "")}))); } } catch {} },[]);
   const today = new Date();
   const interestFor = (r: Entry) => {
     const principal = parseAmount(r.amount);
