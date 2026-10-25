@@ -193,7 +193,7 @@ export default function FinanceLedgerPage() {
             <td className="px-2 py-2"><input aria-label="Notes" value={r.note} onChange={e=>update(r.id,"note",e.target.value)} placeholder="Notes" className="w-40 rounded-lg border border-transparent bg-transparent px-2 py-2 outline-none focus:border-black/20 focus:bg-white"/></td>
             <td className="px-2 py-2"><button aria-label="Delete row" onClick={async()=>{setRows(old=>old.filter(x=>x.id!==r.id));setSaved(false);if(userId){const result=await createClient().from("finance_ledger_entries").delete().eq("user_id",userId).eq("id",r.id);if(result.error)setDbMessage("Delete failed: "+result.error.message);else setDbMessage("Record deleted from database");}}} className="grid size-8 place-items-center rounded-lg text-black/35 hover:bg-red-50 hover:text-red-700"><Trash2 size={15}/></button></td>
           </tr>)}</tbody>
-          <tfoot className="bg-[#f7f7f5]"><tr><td colSpan={2} className="px-4 py-4 font-black">Total current balance</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td className="px-3 py-4 text-right text-base font-black tabular-nums">{money(totalInterest)}</td><td className="px-3 py-4 text-right text-base font-black tabular-nums">{money(total)}</td><td className="px-3 py-4 text-xs text-black/45">Estimated interest only; verify rates and dates.</td><td></td></tr></tfoot>
+          <tfoot className="bg-[#f7f7f5]"><tr><td colSpan={7} className="px-4 py-4 font-black">Total current balance</td><td className="px-3 py-4 text-right text-base font-black tabular-nums">{money(totalInterest)}</td><td className="px-3 py-4 text-right text-base font-black tabular-nums">{money(total)}</td><td className="px-3 py-4 text-xs text-black/45">Estimated interest; verify rates and dates.</td><td></td></tr></tfoot>
         </table></div>
       </div>
       <section className="mt-5 grid gap-4 lg:grid-cols-2">
@@ -224,7 +224,7 @@ export default function FinanceLedgerPage() {
           </div>
         </div>
       </section>
-      <p className="mt-3 text-xs leading-5 text-black/45">Forecast assumptions: One-time rows accrue estimated simple interest. Recurring rows add or withdraw the entered amount on each scheduled month from the Invested date (or current month if no date is set); the balance then earns monthly interest at annual rate divided by 12. Forecast is an estimate and excludes taxes, fees, and rate changes. This is a scenario estimate, not a guaranteed return.</p>
+      <p className="mt-3 text-xs leading-5 text-black/45">Forecast assumptions: Interest compounds monthly at the annual rate divided by 12. One-time rows are counted once; recurring deposits or withdrawals occur on each scheduled month from the Invested date (or current month if no date is set). Withdrawals reduce the total ledger balance and do not earn interest themselves. Each row is calculated independently, so a withdrawal does not change interest on a separate deposit row. Taxes, fees, and rate changes are excluded.</p>
       <p className="mt-4 text-xs leading-5 text-black/45">Interest earned is estimated using monthly compounding (annual rate divided by 12). Actual bank interest may differ based on deposit timing, balance rules, taxes, fees, and rate changes. Privacy: ledger records are stored in your signed-in Supabase account with row-level access controls. The initial rows are a best-effort transcription from your photo, not a verified accounting record.</p>
     </div>
   </main>;
