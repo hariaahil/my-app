@@ -7,7 +7,12 @@ import { createClient } from "@/lib/supabase-browser";
 
 type Direction = "inflow" | "outflow";
 type Entry = { id: string; availableIn: string; amount: string; policy: string; mode: string; interestRate: string; investedDate: string; note: string; recurrenceMonths?: string; customMonths?: string; direction?: Direction };
-const normalizeRows = (items:Entry[]):Entry[] => items.map(r=>{const n=Number(r.recurrenceMonths)||0;const custom=n>0&&![1,3,6,12].includes(n);return {...r,recurrenceMonths:custom?"custom":String(n),customMonths:custom?String(n):(r.customMonths||""),direction:r.direction||"inflow"};});
+const normalizeRows = (items:Entry[]):Entry[] => items.map(r=>{
+  if (r.recurrenceMonths === "custom") return {...r, customMonths:r.customMonths||"", direction:r.direction||"inflow"};
+  const n=Number(r.recurrenceMonths)||0;
+  const custom=n>0&&![1,3,6,12].includes(n);
+  return {...r,recurrenceMonths:custom?"custom":String(n),customMonths:custom?String(n):(r.customMonths||""),direction:r.direction||"inflow"};
+});
 const STORAGE_KEY = "targetbud-finance-ledger-v2";
 const initialRows: Entry[] = [
   {id:"1",availableIn:"Bank",amount:"98500",policy:"6.30 lakh",mode:"Deposit",interestRate:"",investedDate:"",note:"From notebook; verify amount/balance"},
@@ -104,38 +109,96 @@ export default function FinanceLedgerPage() {
     return ()=>window.clearTimeout(timer);
   },[rows,hydrated,userId,dbReady]);
   const today = new Date();
-  const interestFor = (r: Entry) => {
-    const principal = parseAmount(r.amount);
-    const rate = Math.max(0, Number(r.interestRate) || 0);
-    if (Number(r.recurrenceMonths)>0 || !r.investedDate || !principal || !rate) return 0;
-    const start = new Date(r.investedDate + "T00:00:00");
-    if (Number.isNaN(start.getTime()) || start > today) return 0;
-    const days = Math.max(0, Math.floor((new Date(today.getFullYear(),today.getMonth(),today.getDate()).getTime()-start.getTime())/86400000));
-    return principal * (rate/100) * (days/365);
+  const intervalFor = (r: Entry) => r.recurrenceMonths === "custom"
+    ? Math.max(0, Math.floor(Number(r.customMonths) || 0))
+    : Math.max(0, Math.floor(Number(r.recurrenceMonths) || 0));
+  const startMonthFor = (r: Entry) => {
+    const start = r.investedDate ? new Date(r.investedDate + "T00:00:00") : new Date(today.getFullYear(), today.getMonth(), 1);
+    return new Date(start.getFullYear(), start.getMonth(), 1);
   };
-  const totalInterest = rows.reduce((sum,r)=>sum+interestFor(r),0);
-  const forecastValue = (months:number) => rows.reduce((sum,r)=>{
-    const amount=parseAmount(r.amount);
-    const rate=Math.max(0,Number(r.interestRate)||0)/100;
-    const interval=r.recurrenceMonths==="custom"?Math.max(0,Math.floor(Number(r.customMonths)||0)):Math.max(0,Math.floor(Number(r.recurrenceMonths)||0));
-    if(interval===0)return sum+amount+interestFor(r)+(amount*rate*months/12);
-    let value=0;
-    const start=r.investedDate?new Date(r.investedDate+"T00:00:00"):new Date(today.getFullYear(),today.getMonth(),1);
-    const startMonth=new Date(start.getFullYear(),start.getMonth(),1);
-    for(let m=0;m<months;m++){
-      const contributionDate=new Date(today.getFullYear(),today.getMonth()+m,1);
-      const monthOffset=(contributionDate.getFullYear()-startMonth.getFullYear())*12+(contributionDate.getMonth()-startMonth.getMonth());
-      if(monthOffset<0||monthOffset%interval!==0)continue;
-      value+=(r.direction==="outflow"?-amount:amount);
-      if(r.direction!=="outflow"&&rate>0)value+=amount*rate*Math.max(0,months-m-1)/12;
+  const monthOffsetFromStart = (r: Entry, date: Date) => {
+    const start = startMonthFor(r);
+    return (date.getFullYear() - start.getFullYear()) * 12 + date.getMonth() - start.getMonth();
+  };
+  // A recurring row's Amount is its contribution/withdrawal each scheduled month.
+  // Build its current balance by replaying scheduled transactions and monthly interest.
+  const balanceToDate = (r: Entry) => {
+    const amount = parseAmount(r.amount);
+    const rate = Math.max(0, Number(r.interestRate) || 0) / 100 / 12;
+    const interval = intervalFor(r);
+    if (!amount) return 0;
+    if (interval === 0) {
+      const principal = amount;
+      if (!r.investedDate || rate <= 0) return principal;
+      const start = new Date(r.investedDate + "T00:00:00");
+      if (Number.isNaN(start.getTime()) || start > today) return principal;
+      const days = Math.max(0, Math.floor((new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime() - start.getTime()) / 86400000));
+      return principal + principal * (rate * 12) * (days / 365);
     }
-    return sum+value;
-  },0);
-  const monthlyForecast=Array.from({length:12},(_,i)=>({period:i+1,value:forecastValue(i+1)}));
-  const yearlyForecast=Array.from({length:12},(_,i)=>({period:i+1,value:forecastValue((i+1)*12)}));
+    const start = startMonthFor(r);
+    if (start > new Date(today.getFullYear(), today.getMonth(), 1)) return 0;
+    let balance = 0;
+    const elapsedMonths = monthOffsetFromStart(r, new Date(today.getFullYear(), today.getMonth(), 1));
+    for (let offset = 0; offset <= elapsedMonths; offset++) {
+      if (offset % interval === 0) {
+        balance = r.direction === "outflow" ? Math.max(0, balance - amount) : balance + amount;
+      }
+      balance *= 1 + rate;
+    }
+    return balance;
+  };
+  const interestFor = (r: Entry) => {
+    const amount = parseAmount(r.amount);
+    const interval = intervalFor(r);
+    if (!amount || !r.investedDate || (Number(r.interestRate) || 0) <= 0) return 0;
+    if (interval === 0) {
+      const start = new Date(r.investedDate + "T00:00:00");
+      if (Number.isNaN(start.getTime()) || start > today) return 0;
+      const days = Math.max(0, Math.floor((new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime() - start.getTime()) / 86400000));
+      return amount * (Math.max(0, Number(r.interestRate) || 0) / 100) * (days / 365);
+    }
+    const start = startMonthFor(r);
+    if (start > new Date(today.getFullYear(), today.getMonth(), 1)) return 0;
+    let balance = 0;
+    let netPrincipal = 0;
+    const elapsedMonths = monthOffsetFromStart(r, new Date(today.getFullYear(), today.getMonth(), 1));
+    const monthlyRate = Math.max(0, Number(r.interestRate) || 0) / 100 / 12;
+    for (let offset = 0; offset <= elapsedMonths; offset++) {
+      if (offset % interval === 0) {
+        const delta = r.direction === "outflow" ? -Math.min(balance, amount) : amount;
+        balance += delta;
+        netPrincipal += delta;
+      }
+      balance *= 1 + monthlyRate;
+    }
+    return balance - netPrincipal;
+  };
+  const totalInterest = rows.reduce((sum, r) => sum + interestFor(r), 0);
+  const forecastValue = (months: number) => rows.reduce((sum, r) => {
+    const amount = parseAmount(r.amount);
+    const interval = intervalFor(r);
+    const monthlyRate = Math.max(0, Number(r.interestRate) || 0) / 100 / 12;
+    let balance = balanceToDate(r);
+    for (let step = 1; step <= months; step++) {
+      const date = new Date(today.getFullYear(), today.getMonth() + step, 1);
+      if (interval > 0) {
+        const offset = monthOffsetFromStart(r, date);
+        if (offset >= 0 && offset % interval === 0) {
+          balance = r.direction === "outflow" ? Math.max(0, balance - amount) : balance + amount;
+        }
+      }
+      balance *= 1 + monthlyRate;
+    }
+    return sum + balance;
+  }, 0);
+  const monthlyForecast = Array.from({ length: 12 }, (_, i) => ({ period: i + 1, value: forecastValue(i + 1) }));
+  const yearlyForecast = Array.from({ length: 12 }, (_, i) => ({ period: i + 1, value: forecastValue((i + 1) * 12) }));
 
-  const running = useMemo(()=>{let total=0; return rows.map(r=>{ if(!(Number(r.recurrenceMonths)>0))total+=parseAmount(r.amount); return total; });},[rows]);
-  const total = rows.reduce((s,r)=>s+(Number(r.recurrenceMonths)>0?0:parseAmount(r.amount)),0);
+  const running = useMemo(() => {
+    let runningTotal = 0;
+    return rows.map(r => { runningTotal += balanceToDate(r); return runningTotal; });
+  }, [rows]);
+  const total = rows.reduce((sum, r) => sum + balanceToDate(r), 0);
   const update = (id:string,key:keyof Entry,value:string)=>{setRows(old=>old.map(r=>r.id===id?{...r,[key]:value}:r));setSaved(false)};
   const add = ()=>{setRows(old=>[...old,{id:Date.now().toString(),availableIn:"Bank",amount:"",policy:"",mode:"",interestRate:"",investedDate:"",note:"",recurrenceMonths:"0",customMonths:"",direction:"inflow"}]);setSaved(false)};
   const save = async ()=>{if(!userId){setDbMessage("Please log in to save to the database.");return;}try{const payload=rows.map((r,i)=>({user_id:userId,id:r.id,available_in:r.availableIn,amount:r.amount,reference:r.policy,interest_rate:r.interestRate,invested_date:r.investedDate||null,note:r.note,sort_order:i,recurrence_months:(r.recurrenceMonths==="custom"?Number(r.customMonths)||0:Number(r.recurrenceMonths)||0),direction:r.direction}));if(payload.length){const result=await createClient().from("finance_ledger_entries").upsert(payload,{onConflict:"user_id,id"});if(result.error)throw result.error;}localStorage.setItem(STORAGE_KEY,JSON.stringify(rows));setSaved(true);setDbMessage("All changes saved to database");}catch(error:any){setSaved(false);setDbMessage("Save failed: "+(error?.message||"please try again"));}};
@@ -156,7 +219,7 @@ export default function FinanceLedgerPage() {
       <div className="mt-5 overflow-hidden rounded-2xl border border-black/10 bg-white">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 px-4 py-3"><div><h2 className="font-black">Ledger table</h2><p className="text-xs text-black/45">{dbMessage} · {!userId && <Link href="/login" className="font-bold underline">Log in</Link>} · The existing Invested date is used as the recurrence start date. Choose a repeat interval in months; Custom lets you enter any number of months.</p></div><button onClick={reset} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-black/50 hover:bg-black/5"><RotateCcw size={14}/> Reset transcription</button></div>
         <div className="overflow-x-auto"><table className="w-full min-w-[1850px] border-collapse text-left text-sm">
-          <thead className="bg-[#f1f1ee] text-xs uppercase tracking-wider text-black/55"><tr>{["Available In","Amount (₹)","Reference","Interest rate (% p.a.)","Invested date","Repeat every (months)","Direction","Interest earned","Running total","Notes",""].map(h=><th key={h} className="border-b border-black/10 px-3 py-3 font-black">{h}</th>)}</tr></thead>
+          <thead className="bg-[#f1f1ee] text-xs uppercase tracking-wider text-black/55"><tr>{["Available In","Monthly amount / principal (₹)","Reference","Interest rate (% p.a.)","Invested date","Repeat every (months)","Direction","Interest earned to date","Balance to date","Notes",""].map(h=><th key={h} className="border-b border-black/10 px-3 py-3 font-black">{h}</th>)}</tr></thead>
           <tbody>{rows.map((r,i)=><tr key={r.id} className="border-b border-black/[.06] last:border-0 hover:bg-black/[.015]">
             <td className="px-2 py-2"><select aria-label="Available in" value={r.availableIn} onChange={e=>update(r.id,"availableIn",e.target.value)} className="w-28 rounded-lg border border-transparent bg-transparent px-2 py-2 outline-none focus:border-black/20 focus:bg-white">{["Bank","Cash","Lended"].map(x=><option key={x}>{x}</option>)}</select></td>
             <td className="px-2 py-2"><input aria-label="Amount in rupees" inputMode="decimal" value={r.amount} onChange={e=>update(r.id,"amount",e.target.value)} placeholder="0" className="w-28 rounded-lg border border-transparent bg-transparent px-2 py-2 text-right font-semibold tabular-nums outline-none focus:border-black/20 focus:bg-white"/></td>
@@ -170,7 +233,7 @@ export default function FinanceLedgerPage() {
             <td className="px-2 py-2"><input aria-label="Notes" value={r.note} onChange={e=>update(r.id,"note",e.target.value)} placeholder="Notes" className="w-40 rounded-lg border border-transparent bg-transparent px-2 py-2 outline-none focus:border-black/20 focus:bg-white"/></td>
             <td className="px-2 py-2"><button aria-label="Delete row" onClick={async()=>{setRows(old=>old.filter(x=>x.id!==r.id));setSaved(false);if(userId){const result=await createClient().from("finance_ledger_entries").delete().eq("user_id",userId).eq("id",r.id);if(result.error)setDbMessage("Delete failed: "+result.error.message);else setDbMessage("Record deleted from database");}}} className="grid size-8 place-items-center rounded-lg text-black/35 hover:bg-red-50 hover:text-red-700"><Trash2 size={15}/></button></td>
           </tr>)}</tbody>
-          <tfoot className="bg-[#f7f7f5]"><tr><td colSpan={2} className="px-4 py-4 font-black">One-time totals</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td className="px-3 py-4 text-right text-base font-black tabular-nums">{money(totalInterest)}</td><td className="px-3 py-4 text-right text-base font-black tabular-nums">{money(total)}</td><td className="px-3 py-4 text-xs text-black/45">Estimated interest only; verify rates and dates.</td><td></td></tr></tfoot>
+          <tfoot className="bg-[#f7f7f5]"><tr><td colSpan={2} className="px-4 py-4 font-black">Total current balance</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td className="px-3 py-4 text-right text-base font-black tabular-nums">{money(totalInterest)}</td><td className="px-3 py-4 text-right text-base font-black tabular-nums">{money(total)}</td><td className="px-3 py-4 text-xs text-black/45">Estimated interest only; verify rates and dates.</td><td></td></tr></tfoot>
         </table></div>
       </div>
       <section className="mt-5 grid gap-4 lg:grid-cols-2">
@@ -201,7 +264,7 @@ export default function FinanceLedgerPage() {
           </div>
         </div>
       </section>
-      <p className="mt-3 text-xs leading-5 text-black/45">Forecast assumptions: One-time rows count the existing balance once. Repeating rows add or withdraw the entered amount every selected number of months, starting from the existing Invested date (or the current month if no date is set). Future interest is estimated using simple interest; no compounding, taxes, fees, or rate changes are modeled. This is a scenario estimate, not a guaranteed return.</p>
+      <p className="mt-3 text-xs leading-5 text-black/45">Forecast assumptions: One-time rows accrue estimated simple interest. Recurring rows add or withdraw the entered amount on each scheduled month from the Invested date (or current month if no date is set); the balance then earns monthly interest at annual rate divided by 12. Forecast is an estimate and excludes taxes, fees, and rate changes. This is a scenario estimate, not a guaranteed return.</p>
       <p className="mt-4 text-xs leading-5 text-black/45">Interest earned is an estimate of simple interest (principal × annual rate × elapsed days ÷ 365); it is not compound interest and does not account for tax, fees, withdrawals, or changing rates. Privacy: ledger records are stored in your signed-in Supabase account with row-level access controls. The initial rows are a best-effort transcription from your photo, not a verified accounting record.</p>
     </div>
   </main>;
