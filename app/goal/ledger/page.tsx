@@ -140,7 +140,7 @@ export default function FinanceLedgerPage() {
   const monthlyForecast=Array.from({length:12},(_,i)=>({period:i+1,value:forecastValue(i+1)}));
   const yearlyForecast=Array.from({length:12},(_,i)=>({period:i+1,value:forecastValue((i+1)*12)}));
 
-  const running = useMemo(()=>{let total=0; return rows.map(r=>{ total+=parseAmount(r.amount); return total; });},[rows]);
+  const running = useMemo(()=>{let total=0; return rows.map(r=>{ if(r.frequency==="one_time")total+=parseAmount(r.amount); return total; });},[rows]);
   const total = rows.reduce((s,r)=>s+parseAmount(r.amount),0);
   const update = (id:string,key:keyof Entry,value:string)=>{setRows(old=>old.map(r=>r.id===id?{...r,[key]:value}:r));setSaved(false)};
   const add = ()=>{setRows(old=>[...old,{id:Date.now().toString(),availableIn:"Bank",amount:"",policy:"",mode:"",interestRate:"",investedDate:"",note:"",frequency:"one_time",startDate:"",endDate:"",direction:"inflow"}]);setSaved(false)};
