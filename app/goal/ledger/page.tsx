@@ -112,6 +112,14 @@ export default function FinanceLedgerPage() {
     return principal * (rate/100) * (days/365);
   };
   const totalInterest = rows.reduce((sum,r)=>sum+interestFor(r),0);
+  const forecastValue = (months:number) => rows.reduce((sum,r)=>{
+    const principal=parseAmount(r.amount);
+    const rate=Math.max(0,Number(r.interestRate)||0)/100;
+    return sum+principal+interestFor(r)+(principal*rate*months/12);
+  },0);
+  const monthlyForecast=Array.from({length:12},(_,i)=>({period:i+1,value:forecastValue(i+1)}));
+  const yearlyForecast=Array.from({length:12},(_,i)=>({period:i+1,value:forecastValue((i+1)*12)}));
+
   const running = useMemo(()=>{let total=0; return rows.map(r=>{ total+=parseAmount(r.amount); return total; });},[rows]);
   const total = rows.reduce((s,r)=>s+parseAmount(r.amount),0);
   const update = (id:string,key:keyof Entry,value:string)=>{setRows(old=>old.map(r=>r.id===id?{...r,[key]:value}:r));setSaved(false)};
@@ -149,6 +157,35 @@ export default function FinanceLedgerPage() {
           <tfoot className="bg-[#f7f7f5]"><tr><td colSpan={2} className="px-4 py-4 font-black">Totals</td><td></td><td></td><td></td><td className="px-3 py-4 text-right text-base font-black tabular-nums">{money(totalInterest)}</td><td className="px-3 py-4 text-right text-base font-black tabular-nums">{money(total)}</td><td className="px-3 py-4 text-xs text-black/45">Estimated interest only; verify rates and dates.</td><td></td></tr></tfoot>
         </table></div>
       </div>
+      <section className="mt-5 grid gap-4 lg:grid-cols-2">
+        <div className="overflow-hidden rounded-2xl border border-black/10 bg-white">
+          <div className="border-b border-black/10 px-4 py-4">
+            <p className="text-xs font-black uppercase tracking-[.16em] text-black/45">Projection A</p>
+            <h2 className="mt-1 text-xl font-black">Next 12 months</h2>
+            <p className="mt-1 text-xs text-black/50">Estimated ledger value month by month</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-[#f1f1ee] text-left text-xs uppercase text-black/50"><tr><th className="px-4 py-3">Month</th><th className="px-4 py-3 text-right">Forecast value</th><th className="px-4 py-3 text-right">Growth from today</th></tr></thead>
+              <tbody>{monthlyForecast.map(item=><tr key={item.period} className="border-t border-black/[.06]"><td className="px-4 py-3 font-semibold">Month {item.period}</td><td className="px-4 py-3 text-right font-bold tabular-nums">{money(item.value)}</td><td className="px-4 py-3 text-right tabular-nums">{money(item.value-(total+totalInterest))}</td></tr>)}</tbody>
+            </table>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-2xl border border-black/10 bg-white">
+          <div className="border-b border-black/10 px-4 py-4">
+            <p className="text-xs font-black uppercase tracking-[.16em] text-black/45">Projection B</p>
+            <h2 className="mt-1 text-xl font-black">Next 12 years</h2>
+            <p className="mt-1 text-xs text-black/50">Estimated ledger value year by year</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-[#f1f1ee] text-left text-xs uppercase text-black/50"><tr><th className="px-4 py-3">Year</th><th className="px-4 py-3 text-right">Forecast value</th><th className="px-4 py-3 text-right">Growth from today</th></tr></thead>
+              <tbody>{yearlyForecast.map(item=><tr key={item.period} className="border-t border-black/[.06]"><td className="px-4 py-3 font-semibold">Year {item.period}</td><td className="px-4 py-3 text-right font-bold tabular-nums">{money(item.value)}</td><td className="px-4 py-3 text-right tabular-nums">{money(item.value-(total+totalInterest))}</td></tr>)}</tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      <p className="mt-3 text-xs leading-5 text-black/45">Forecast assumptions: each row keeps its current principal and annual rate; future interest is estimated as simple interest, without adding new deposits, withdrawals, repayments, taxes, fees, rate changes, or compounding. Rows without an interest rate earn no projected interest. This is a scenario estimate, not a guaranteed return.</p>
       <p className="mt-4 text-xs leading-5 text-black/45">Interest earned is an estimate of simple interest (principal × annual rate × elapsed days ÷ 365); it is not compound interest and does not account for tax, fees, withdrawals, or changing rates. Privacy: ledger records are stored in your signed-in Supabase account with row-level access controls. The initial rows are a best-effort transcription from your photo, not a verified accounting record.</p>
     </div>
   </main>;
