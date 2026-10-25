@@ -47,6 +47,7 @@ export default function FinanceLedgerPage() {
   const [saved,setSaved] = useState(false);
   const [hydrated,setHydrated] = useState(false);
   const [userId,setUserId] = useState<string|null>(null);
+  const [dbReady,setDbReady] = useState(false);
   const [dbMessage,setDbMessage] = useState("Connecting to database…");
   useEffect(()=>{
     let active=true;
@@ -74,7 +75,7 @@ export default function FinanceLedgerPage() {
           const seed=await supabase.from("finance_ledger_entries").upsert(loaded.map((r,i)=>({user_id:uid,id:r.id,available_in:r.availableIn,amount:r.amount,reference:r.policy,interest_rate:r.interestRate,invested_date:r.investedDate||null,note:r.note,sort_order:i})),{onConflict:"user_id,id"});
           if(seed.error) throw seed.error;
         }
-        if(active){setRows(loaded);setSaved(true);setDbMessage("Connected · saved to database");}
+        if(active){setRows(loaded);setDbReady(true);setSaved(true);setDbMessage("Connected · saved to database");}
       } catch(error:any) {
         if(active) setDbMessage("Database error: "+(error?.message||"connection failed"));
       } finally {
@@ -85,7 +86,7 @@ export default function FinanceLedgerPage() {
     return ()=>{active=false};
   },[]);
   useEffect(()=>{
-    if(!hydrated||!userId) return;
+    if(!hydrated||!userId||!dbReady) return;
     const timer=window.setTimeout(async()=>{
       try{
         const supabase=createClient();
@@ -99,7 +100,7 @@ export default function FinanceLedgerPage() {
       }catch(error:any){setSaved(false);setDbMessage("Save failed: "+(error?.message||"please try again"));}
     },600);
     return ()=>window.clearTimeout(timer);
-  },[rows,hydrated,userId]);
+  },[rows,hydrated,userId,dbReady]);
   const today = new Date();
   const interestFor = (r: Entry) => {
     const principal = parseAmount(r.amount);
