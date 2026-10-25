@@ -128,14 +128,14 @@ export default function FinanceLedgerPage() {
       return balance;
     }
     for(let n=0;n<=elapsed;n++){
-      if(n%interval===0)balance += r.direction==="outflow" ? -Math.min(amount,Math.max(0,balance)) : amount;
+      if(n%interval===0)balance += r.direction==="outflow" ? -amount : amount;
       if(balance>0)balance*=1+mr;
     }
     return balance;
   };
   const interestFor = (r: Entry) => {
     if(r.direction==="outflow"||invalidCustom(r)||!parseAmount(r.amount)||annualRate(r)<=0)return 0;
-    const principal=intervalFor(r)===0?parseAmount(r.amount):parseAmount(r.amount)*(Math.max(0,monthOffset(r,currentMonth))+1);
+    const interval=intervalFor(r), elapsed=Math.max(0,monthOffset(r,currentMonth)); const count=interval===0?1:Math.floor(elapsed/interval)+1; const principal=parseAmount(r.amount)*count;
     return Math.max(0,balanceToDate(r)-principal);
   };
   const totalInterest=rows.reduce((sum,r)=>sum+interestFor(r),0);
@@ -148,7 +148,7 @@ export default function FinanceLedgerPage() {
       const d=new Date(today.getFullYear(),today.getMonth()+step,1);
       if(interval>0){
         const offset=monthOffset(r,d);
-        if(offset>=0&&offset%interval===0)balance += r.direction==="outflow" ? -Math.min(amount,Math.max(0,balance)) : amount;
+        if(offset>=0&&offset%interval===0)balance += r.direction==="outflow" ? -amount : amount;
       }
       if(r.direction!=="outflow"&&balance>0)balance*=1+mr;
     }
@@ -186,7 +186,7 @@ export default function FinanceLedgerPage() {
             <td className="px-2 py-2"><input aria-label="Reference" value={r.policy} onChange={e=>update(r.id,"policy",e.target.value)} placeholder="Where the money came from / description" className="w-48 rounded-lg border border-transparent bg-transparent px-2 py-2 outline-none focus:border-black/20 focus:bg-white"/></td>
             <td className="px-2 py-2"><input aria-label="Interest rate percentage per annum" type="number" min="0" step="0.01" value={r.interestRate} onChange={e=>update(r.id,"interestRate",e.target.value)} placeholder="e.g. 7.5" className="w-28 rounded-lg border border-transparent bg-transparent px-2 py-2 outline-none focus:border-black/20 focus:bg-white"/></td>
             <td className="px-2 py-2"><input aria-label="Invested date" type="date" value={r.investedDate} onChange={e=>update(r.id,"investedDate",e.target.value)} className="w-36 rounded-lg border border-transparent bg-transparent px-2 py-2 outline-none focus:border-black/20 focus:bg-white"/></td>
-            <td className="px-2 py-2"><select aria-label="Repeat interval in months" value={r.recurrenceMonths||"0"} onChange={e=>update(r.id,"recurrenceMonths",e.target.value)} className="w-36 rounded-lg border border-transparent bg-transparent px-2 py-2 outline-none focus:border-black/20 focus:bg-white"><option value="0">One-time</option><option value="1">Every 1 month</option><option value="3">Every 3 months</option><option value="6">Every 6 months</option><option value="12">Every 12 months</option><option value="custom">Custom…</option></select>{r.recurrenceMonths==="custom"&&<input aria-label="Custom recurrence months" type="number" min="1" max="1200" value={r.customMonths||""} onChange={e=>{setRows(old=>old.map(x=>x.id===r.id?{...x,customMonths:e.target.value}:x));setSaved(false)}} placeholder="Months" className="mt-1 w-24 rounded-lg border border-black/15 px-2 py-1"/>}</td>
+            <td className="px-2 py-2"><select aria-label="Repeat interval in months" value={r.recurrenceMonths||"0"} onChange={e=>{const value=e.target.value;setRows(old=>old.map(x=>x.id===r.id?{...x,recurrenceMonths:value,customMonths:value==="custom"?(x.customMonths||"1"):x.customMonths}:x));setSaved(false)}} className="w-36 rounded-lg border border-transparent bg-transparent px-2 py-2 outline-none focus:border-black/20 focus:bg-white"><option value="0">One-time</option><option value="1">Every 1 month</option><option value="3">Every 3 months</option><option value="6">Every 6 months</option><option value="12">Every 12 months</option><option value="custom">Custom…</option></select>{r.recurrenceMonths==="custom"&&<input aria-label="Custom recurrence months" type="number" min="1" max="1200" value={r.customMonths||""} onChange={e=>{setRows(old=>old.map(x=>x.id===r.id?{...x,customMonths:String(Math.max(1,Math.floor(Number(e.target.value)||1)))}:x));setSaved(false)}} placeholder="Months" className="mt-1 w-24 rounded-lg border border-black/15 px-2 py-1"/>}</td>
             <td className="px-2 py-2"><select aria-label="Cash flow direction" value={r.direction||"inflow"} onChange={e=>update(r.id,"direction",e.target.value as Direction)} className="w-28 rounded-lg border border-transparent bg-transparent px-2 py-2 outline-none focus:border-black/20 focus:bg-white"><option value="inflow">Add money</option><option value="outflow">Withdraw</option></select></td>
             <td className="px-3 py-2 text-right font-bold tabular-nums">{money(interestFor(r))}</td>
             <td className="px-3 py-2 text-right font-bold tabular-nums">{money(running[i])}</td>
