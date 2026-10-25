@@ -49,33 +49,57 @@ export default function FinanceLedgerPage() {
   const [userId,setUserId] = useState<string|null>(null);
   const [dbMessage,setDbMessage] = useState("Connecting to database…");
   useEffect(()=>{
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem("targetbud-finance-ledger-v1");
-      if(raw) {
-        const parsed = JSON.parse(raw);
-        if(Array.isArray(parsed)) setRows(parsed.map((r:any)=>({
-          id:String(r.id ?? Date.now()),
-          availableIn:r.availableIn ?? (String(r.name ?? "").toLowerCase().includes("lent") ? "Lended" : (String(r.mode ?? "").toLowerCase()==="cash" || String(r.name ?? "").toLowerCase()==="cash" ? "Cash" : "Bank")),
-          amount:String(r.amount ?? ""),
-          policy:String(r.policy ?? ""),
-          mode:String(r.mode ?? ""),
-          interestRate:String(r.interestRate ?? ""),
-          investedDate:String(r.investedDate ?? ""),
-          note:String(r.note ?? "")
-        })));
+    let active=true;
+    async function load(){
+      try {
+        const supabase=createClient();
+        const auth=await supabase.auth.getUser();
+        if(auth.error) throw auth.error;
+        if(!auth.data.user){
+          if(active) setDbMessage("Please log in to save records to the database.");
+          return;
+        }
+        const uid=auth.data.user.id;
+        if(active) setUserId(uid);
+        const result=await supabase.from("finance_ledger_entries").select("id,available_in,amount,reference,interest_rate,invested_date,note,sort_order").eq("user_id",uid).order("sort_order");
+        if(result.error) throw result.error;
+        let loaded:Entry[]=(result.data||[]).map((r:any)=>({id:String(r.id),availableIn:r.available_in,amount:String(r.amount||""),policy:String(r.reference||""),mode:"",interestRate:String(r.interest_rate||""),investedDate:String(r.invested_date||""),note:String(r.note||"")}));
+        if(!loaded.length){
+          let local:Entry[]=[];
+          try {
+            const raw=localStorage.getItem(STORAGE_KEY)||localStorage.getItem("targetbud-finance-ledger-v1");
+            if(raw){const parsed=JSON.parse(raw);if(Array.isArray(parsed))local=parsed.map((r:any)=>({id:String(r.id||Date.now()),availableIn:r.availableIn||"Bank",amount:String(r.amount||""),policy:String(r.policy||""),mode:String(r.mode||""),interestRate:String(r.interestRate||""),investedDate:String(r.investedDate||""),note:String(r.note||"")}));}
+          } catch {}
+          loaded=local.length?local:initialRows;
+          const seed=await supabase.from("finance_ledger_entries").upsert(loaded.map((r,i)=>({user_id:uid,id:r.id,available_in:r.availableIn,amount:r.amount,reference:r.policy,interest_rate:r.interestRate,invested_date:r.investedDate||null,note:r.note,sort_order:i})),{onConflict:"user_id,id"});
+          if(seed.error) throw seed.error;
+        }
+        if(active){setRows(loaded);setSaved(true);setDbMessage("Connected · saved to database");}
+      } catch(error:any) {
+        if(active) setDbMessage("Database error: "+(error?.message||"connection failed"));
+      } finally {
+        if(active) setHydrated(true);
       }
-    } catch {}
-    finally { setHydrated(true); }
+    }
+    load();
+    return ()=>{active=false};
   },[]);
   useEffect(()=>{
-    if(!hydrated) return;
-    try {
-      localStorage.setItem(STORAGE_KEY,JSON.stringify(rows));
-      setSaved(true);
-    } catch {
-      setSaved(false);
-    }
-  },[rows,hydrated]);
+    if(!hydrated||!userId) return;
+    const timer=window.setTimeout(async()=>{
+      try{
+        const supabase=createClient();
+        const payload=rows.map((r,i)=>({user_id:userId,id:r.id,available_in:r.availableIn,amount:r.amount,reference:r.policy,interest_rate:r.interestRate,invested_date:r.investedDate||null,note:r.note,sort_order:i,updated_at:new Date().toISOString()}));
+        if(payload.length){
+          const result=await supabase.from("finance_ledger_entries").upsert(payload,{onConflict:"user_id,id"});
+          if(result.error) throw result.error;
+        }
+        localStorage.setItem(STORAGE_KEY,JSON.stringify(rows));
+        setSaved(true);setDbMessage("All changes saved to database");
+      }catch(error:any){setSaved(false);setDbMessage("Save failed: "+(error?.message||"please try again"));}
+    },600);
+    return ()=>window.clearTimeout(timer);
+  },[rows,hydrated,userId]);
   const today = new Date();
   const interestFor = (r: Entry) => {
     const principal = parseAmount(r.amount);
